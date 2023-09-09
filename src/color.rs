@@ -43,6 +43,9 @@ pub enum Space {
     /// The sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#numeric-srgb>
     Srgb,
+    /// The sRGB color space with no gamma mapping.
+    /// <https://drafts.csswg.org/css-color-4/#predefined-sRGB-linear>
+    SrgbLinear,
     /// The HSL (hue, saturation, lightness) notation is used as an improved
     /// method of representing colors in the sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>

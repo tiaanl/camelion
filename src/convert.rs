@@ -1,8 +1,24 @@
 //! Implementations on all the models that has conversions to other models.
 
-use crate::{Components, Hsl, Hwb, Srgb};
+use crate::{Components, Hsl, Hwb, Srgb, SrgbLinear};
 
 impl Srgb {
+    /// Convert a gamma encoded sRGB color to a sRGB color without gamma
+    /// encoding (linear light).
+    pub fn to_linear_light(&self) -> SrgbLinear {
+        let Components(red, green, blue) =
+            Components(self.red, self.green, self.blue).map(|value| {
+                let abs = value.abs();
+
+                if abs < 0.04045 {
+                    value / 12.92
+                } else {
+                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
+                }
+            });
+        SrgbLinear::new(red, green, blue, self.alpha)
+    }
+
     /// Convert a color specified in the sRGB color space to the HSL notation.
     pub fn to_hsl(&self) -> Hsl {
         let Components(hue, saturation, lightness) =
@@ -15,6 +31,24 @@ impl Srgb {
         let Components(hue, whitenss, blackness) =
             util::rgb_to_hwb(&Components(self.red, self.green, self.blue));
         Hwb::new(hue, whitenss, blackness, self.alpha)
+    }
+}
+
+impl SrgbLinear {
+    /// Convert a sRGB color without gamma encoding (linear light) to a sRGB
+    /// color with gamma encoding.
+    pub fn to_gamma_encoded(&self) -> Srgb {
+        let Components(red, green, blue) =
+            Components(self.red, self.green, self.blue).map(|value| {
+                let abs = value.abs();
+
+                if abs > 0.0031308 {
+                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
+                } else {
+                    12.92 * value
+                }
+            });
+        Srgb::new(red, green, blue, self.alpha)
     }
 }
 
@@ -161,6 +195,14 @@ mod tests {
     }
 
     #[test]
+    fn convert_srgb_to_srgb_linear() {
+        let srgb_linear = Srgb::new(0.1804, 0.5451, 0.3412, 1.0).to_linear_light();
+        assert_component_eq!(srgb_linear.red, 0.027323073);
+        assert_component_eq!(srgb_linear.green, 0.25818488);
+        assert_component_eq!(srgb_linear.blue, 0.09532106);
+    }
+
+    #[test]
     fn convert_srgb_to_hsl() {
         let hsl = Srgb::new(0.1804, 0.5451, 0.3412, 1.0).to_hsl();
         assert_component_eq!(hsl.hue, 146.45462);
@@ -174,6 +216,14 @@ mod tests {
         assert_component_eq!(hwb.hue, 146.45462);
         assert_component_eq!(hwb.whiteness, 0.1804);
         assert_component_eq!(hwb.blackness, 0.45490003);
+    }
+
+    #[test]
+    fn convert_srgb_linear_to_srgb() {
+        let srgb = SrgbLinear::new(0.0319, 0.6105, 0.0319, 1.0).to_gamma_encoded();
+        assert_component_eq!(srgb.red, 0.19609144);
+        assert_component_eq!(srgb.green, 0.8039241);
+        assert_component_eq!(srgb.blue, 0.19609144);
     }
 
     #[test]

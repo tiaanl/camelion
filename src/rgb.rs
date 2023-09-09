@@ -5,23 +5,57 @@ use std::marker::PhantomData;
 use crate::color::ComponentDetails;
 use crate::{Component, Flags, Space};
 
-mod tag {
-    use crate::Space;
-
+mod space {
     /// This trait is used to identify tags that specify a color space/notation.
-    pub trait SpaceTag {
-        const SPACE: Space;
-    }
+    pub trait SpaceTag {}
 
     /// Tag for the sRGB color space.
     pub struct Srgb;
-    impl SpaceTag for Srgb {
+    impl SpaceTag for Srgb {}
+}
+
+mod encoding {
+    /// This trait is used to identity tags that specify gamma encoding.
+    pub trait GammaEncodingTag {}
+
+    pub struct GammaEncoded;
+    impl GammaEncodingTag for GammaEncoded {}
+
+    pub struct LinearLight;
+    impl GammaEncodingTag for LinearLight {}
+}
+
+mod model {
+    use super::encoding;
+    use super::space;
+    use crate::Space;
+
+    pub trait RgbModel {
+        type Space: space::SpaceTag;
+        type GammaEncoding: encoding::GammaEncodingTag;
+
+        const SPACE: Space;
+    }
+
+    pub struct Srgb;
+    impl RgbModel for Srgb {
+        type Space = space::Srgb;
+        type GammaEncoding = encoding::GammaEncoded;
+
         const SPACE: Space = Space::Srgb;
+    }
+
+    pub struct SrgbLinear;
+    impl RgbModel for SrgbLinear {
+        type Space = space::Srgb;
+        type GammaEncoding = encoding::GammaEncoded;
+
+        const SPACE: Space = Space::SrgbLinear;
     }
 }
 
 /// A color specified in the sRGB color space.
-pub struct Rgb<S: tag::SpaceTag> {
+pub struct Rgb<R: model::RgbModel> {
     /// The red component of the color.
     pub red: Component,
     /// The green component of the color.
@@ -33,10 +67,10 @@ pub struct Rgb<S: tag::SpaceTag> {
     /// Holds any flags that might be enabled for this color.
     pub flags: Flags,
     _space: Space,
-    _space_tag: PhantomData<S>,
+    r: PhantomData<R>,
 }
 
-impl<S: tag::SpaceTag> Rgb<S> {
+impl<M: model::RgbModel> Rgb<M> {
     /// Create a new color with RGB (red, green, blue) components.
     pub fn new(
         red: impl Into<ComponentDetails>,
@@ -59,11 +93,14 @@ impl<S: tag::SpaceTag> Rgb<S> {
             blue,
             alpha,
             flags,
-            _space: S::SPACE,
-            _space_tag: PhantomData,
+            _space: M::SPACE,
+            r: PhantomData,
         }
     }
 }
 
-/// Model for a color in the sRGB color space.
-pub type Srgb = Rgb<tag::Srgb>;
+/// Model for a color in the sRGB color space with gamma encoding.
+pub type Srgb = Rgb<model::Srgb>;
+
+/// Model for a color in the sRGB color space with no gamma encoding.
+pub type SrgbLinear = Rgb<model::SrgbLinear>;
