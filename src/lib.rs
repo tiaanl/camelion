@@ -5,4 +5,4 @@
 
 mod color;
 
-pub use color::{Color, Flags, Space};
+pub use color::{Color, Component, Components, Flags, Space};

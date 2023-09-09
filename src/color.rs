@@ -1,12 +1,20 @@
+//! A [`Color`] represents a color that was specified in any of the supported
+//! CSS color spaces.
+
 use bitflags::bitflags;
 
+/// The type that each component of a color is stored as.
+///
+/// This allows switching to a more/less precise floating point type if
+/// required.
 pub type Component = f32;
 
+/// Represent the three components that describe any color.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Components(pub Component, pub Component, pub Component);
 
 bitflags! {
-    /// Flags set on each [`Color`] when some of it's components are missing.
+    /// Flags to mark any missing components on a [`Color`]
     #[derive(Debug, PartialEq)]
     pub struct Flags : u8 {
         /// Set when the first component of a [`Color`] is missing.
@@ -20,11 +28,21 @@ bitflags! {
     }
 }
 
-/// Represents a color space.
+/// Various color spaces and forms supported by the CSS specification.
+///<https://drafts.csswg.org/css-color-4/#color-type>
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Space {
     /// The sRGB color space.
+    /// <https://drafts.csswg.org/css-color-4/#numeric-srgb>
     Srgb,
+    /// The HSL (hue, saturation, lightness) notation is used as an improved
+    /// method of representing colors in the sRGB color space.
+    /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
+    Hsl,
+    /// The HWB (hue, whiteness, blackness) notation is used as an improved
+    /// method of specifying colors in the sRGB color space.
+    /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
+    Hwb,
 }
 
 /// Struct that can hold a color of any color space.
