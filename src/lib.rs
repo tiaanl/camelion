@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 mod color;
+mod convert;
 mod hsl;
 mod hwb;
 mod rgb;

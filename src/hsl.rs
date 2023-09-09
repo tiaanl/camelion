@@ -4,6 +4,7 @@ use crate::color::ComponentDetails;
 use crate::{Component, Flags, Space};
 
 /// A color specified with the HSL notation in the sRGB color space.
+#[derive(Debug, PartialEq)]
 pub struct Hsl {
     /// The hue component of the color.
     pub hue: Component,

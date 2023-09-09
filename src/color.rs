@@ -13,6 +13,14 @@ pub type Component = f32;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Components(pub Component, pub Component, pub Component);
 
+impl Components {
+    /// Return new components with each component mapped with the given
+    /// function.
+    pub fn map(&self, f: impl Fn(Component) -> Component) -> Self {
+        Self(f(self.0), f(self.1), f(self.2))
+    }
+}
+
 bitflags! {
     /// Flags to mark any missing components on a [`Color`]
     #[derive(Debug, PartialEq)]
