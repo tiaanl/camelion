@@ -4,5 +4,11 @@
 #![deny(missing_docs)]
 
 mod color;
+mod hsl;
+mod hwb;
+mod rgb;
 
 pub use color::{Color, Component, Components, Flags, Space};
+pub use hsl::Hsl;
+pub use hwb::Hwb;
+pub use rgb::Srgb;
