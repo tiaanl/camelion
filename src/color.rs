@@ -23,7 +23,7 @@ impl Components {
 
 bitflags! {
     /// Flags to mark any missing components on a [`Color`]
-    #[derive(Debug, PartialEq)]
+    #[derive(Clone, Copy, Debug, PartialEq)]
     pub struct Flags : u8 {
         /// Set when the first component of a [`Color`] is missing.
         const C0_IS_NONE = 1 << 0;
@@ -56,6 +56,7 @@ pub enum Space {
     Hwb,
 }
 
+#[derive(Clone, Debug)]
 /// Struct that can hold a color of any color space.
 pub struct Color {
     /// The three components that make up any color.

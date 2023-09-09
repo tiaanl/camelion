@@ -1,6 +1,62 @@
 //! Implementations on all the models that has conversions to other models.
 
-use crate::{Components, Hsl, Hwb, Srgb, SrgbLinear};
+use crate::{Color, Components, Hsl, Hwb, Space, Srgb, SrgbLinear};
+
+impl Color {
+    /// Convert this color from its current color space/notation to the
+    /// specified color space/notation.
+    pub fn to_space(&self, space: Space) -> Self {
+        use Space as S;
+
+        if self.space == space {
+            return self.clone();
+        }
+
+        // Handle direct conversions.
+        match (self.space, space) {
+            (S::Srgb, S::SrgbLinear) => {
+                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(srgb.to_linear_light()) };
+            }
+            (S::SrgbLinear, S::Srgb) => {
+                let srgb_linear: &SrgbLinear = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(srgb_linear.to_gamma_encoded()) };
+            }
+            (S::Srgb, S::Hsl) => {
+                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(srgb.to_hsl()) };
+            }
+            (S::Hsl, S::Srgb) => {
+                let hsl: &Hsl = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(hsl.to_srgb()) };
+            }
+            (S::Srgb, S::Hwb) => {
+                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(srgb.to_hwb()) };
+            }
+            (S::Hwb, S::Srgb) => {
+                let hwb: &Hwb = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(hwb.to_srgb()) };
+            }
+            _ => {}
+        }
+
+        // Handle a special case where the connecting space is sRGB.
+        match (self.space, space) {
+            (S::Hsl, S::Hwb) => {
+                let hsl: &Hsl = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(hsl.to_srgb().to_hwb()) };
+            }
+            (S::Hwb, S::Hsl) => {
+                let hwb: &Hwb = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(hwb.to_srgb().to_hsl()) };
+            }
+            _ => {}
+        }
+
+        todo!()
+    }
+}
 
 impl Srgb {
     /// Convert a gamma encoded sRGB color to a sRGB color without gamma
