@@ -1,6 +1,8 @@
 //! Implementations on all the models that has conversions to other models.
 
-use crate::{Color, Component, Components, Hsl, Hwb, Space, Srgb, SrgbLinear, XyzD50, XyzD65};
+use crate::{
+    Color, Component, Components, DisplayP3, Hsl, Hwb, Space, Srgb, SrgbLinear, XyzD50, XyzD65,
+};
 
 type Transform = euclid::default::Transform3D<Component>;
 type Vector = euclid::default::Vector3D<Component>;
@@ -165,6 +167,12 @@ impl XyzD65 {
         let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
         XyzD50::new(result.x, result.y, result.z, self.alpha)
     }
+}
+
+impl DisplayP3 {
+    // pub fn to_linear_light(&self) -> DisplayP3Linear {
+    //     todo!()
+    // }
 }
 
 mod util {

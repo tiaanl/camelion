@@ -4,6 +4,8 @@ use crate::color::ComponentDetails;
 use crate::{Component, Flags, Space};
 use std::marker::PhantomData;
 
+use self::model::RgbModel;
+
 mod space {
     /// This trait is used to identify tags that specify a color space/notation.
     pub trait SpaceTag {}
@@ -11,6 +13,10 @@ mod space {
     /// Tag for the sRGB color space.
     pub struct Srgb;
     impl SpaceTag for Srgb {}
+
+    /// Tag for the DisplayP3 color space.
+    pub struct DisplayP3;
+    impl SpaceTag for DisplayP3 {}
 }
 
 mod encoding {
@@ -25,36 +31,36 @@ mod encoding {
 }
 
 mod model {
+    use std::marker::PhantomData;
+
     use super::encoding;
     use super::space;
     use crate::Space;
 
     pub trait RgbModel {
-        type Space: space::SpaceTag;
-        type GammaEncoding: encoding::GammaEncodingTag;
-
         const SPACE: Space;
     }
 
-    pub struct Srgb;
-    impl RgbModel for Srgb {
-        type Space = space::Srgb;
-        type GammaEncoding = encoding::GammaEncoded;
+    pub struct Model<S: space::SpaceTag, E: encoding::GammaEncodingTag> {
+        s: PhantomData<S>,
+        e: PhantomData<E>,
+    }
 
+    impl RgbModel for Model<space::Srgb, encoding::GammaEncoded> {
         const SPACE: Space = Space::Srgb;
     }
 
-    pub struct SrgbLinear;
-    impl RgbModel for SrgbLinear {
-        type Space = space::Srgb;
-        type GammaEncoding = encoding::GammaEncoded;
-
+    impl RgbModel for Model<space::Srgb, encoding::LinearLight> {
         const SPACE: Space = Space::SrgbLinear;
+    }
+
+    impl RgbModel for Model<space::DisplayP3, encoding::GammaEncoded> {
+        const SPACE: Space = Space::DisplayP3;
     }
 }
 
 /// A color specified in the sRGB color space.
-pub struct Rgb<R: model::RgbModel> {
+pub struct Rgb<S: space::SpaceTag, E: encoding::GammaEncodingTag> {
     /// The red component of the color.
     pub red: Component,
     /// The green component of the color.
@@ -66,10 +72,14 @@ pub struct Rgb<R: model::RgbModel> {
     /// Holds any flags that might be enabled for this color.
     pub flags: Flags,
     _space: Space,
-    r: PhantomData<R>,
+    s: PhantomData<S>,
+    e: PhantomData<E>,
 }
 
-impl<M: model::RgbModel> Rgb<M> {
+impl<S: space::SpaceTag, E: encoding::GammaEncodingTag> Rgb<S, E>
+where
+    model::Model<S, E>: RgbModel,
+{
     /// Create a new color with RGB (red, green, blue) components.
     pub fn new(
         red: impl Into<ComponentDetails>,
@@ -92,14 +102,50 @@ impl<M: model::RgbModel> Rgb<M> {
             blue,
             alpha,
             flags,
-            _space: M::SPACE,
-            r: PhantomData,
+            _space: <model::Model<S, E> as model::RgbModel>::SPACE,
+            s: PhantomData,
+            e: PhantomData,
         }
     }
 }
 
 /// Model for a color in the sRGB color space with gamma encoding.
-pub type Srgb = Rgb<model::Srgb>;
+pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
 
 /// Model for a color in the sRGB color space with no gamma encoding.
-pub type SrgbLinear = Rgb<model::SrgbLinear>;
+pub type SrgbLinear = Rgb<space::Srgb, encoding::LinearLight>;
+
+/// Model for a color in the DisplayP3 color space with gamme encoding.
+pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_rgb_colors() {
+        let srgb = Srgb::new(0.1, 0.2, 0.3, 0.4);
+        assert_eq!(srgb.red, 0.1);
+        assert_eq!(srgb.green, 0.2);
+        assert_eq!(srgb.blue, 0.3);
+        assert_eq!(srgb.alpha, 0.4);
+        assert!(srgb.flags.is_empty());
+        assert_eq!(srgb._space, Space::Srgb);
+
+        let srgb_linear = SrgbLinear::new(0.1, 0.2, 0.3, 0.4);
+        assert_eq!(srgb_linear.red, 0.1);
+        assert_eq!(srgb_linear.green, 0.2);
+        assert_eq!(srgb_linear.blue, 0.3);
+        assert_eq!(srgb_linear.alpha, 0.4);
+        assert!(srgb_linear.flags.is_empty());
+        assert_eq!(srgb_linear._space, Space::SrgbLinear);
+
+        let display_p3 = DisplayP3::new(0.1, 0.2, 0.3, 0.4);
+        assert_eq!(display_p3.red, 0.1);
+        assert_eq!(display_p3.green, 0.2);
+        assert_eq!(display_p3.blue, 0.3);
+        assert_eq!(display_p3.alpha, 0.4);
+        assert!(display_p3.flags.is_empty());
+        assert_eq!(display_p3._space, Space::DisplayP3);
+    }
+}

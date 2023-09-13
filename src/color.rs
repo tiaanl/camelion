@@ -58,6 +58,8 @@ pub enum Space {
     XyzD50,
     /// xyz-d65
     XyzD65,
+    /// display-p3
+    DisplayP3,
 }
 
 #[derive(Clone, Debug)]
@@ -107,6 +109,10 @@ impl Color {
             space,
         }
     }
+}
+
+pub trait IntoColor {
+    fn into_color(self) -> Color;
 }
 
 pub struct ComponentDetails {
