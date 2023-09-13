@@ -54,6 +54,10 @@ pub enum Space {
     /// method of specifying colors in the sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
     Hwb,
+    /// xyz-d50
+    XyzD50,
+    /// xyz-d65
+    XyzD65,
 }
 
 #[derive(Clone, Debug)]
@@ -73,10 +77,12 @@ impl Color {
     /// Create a new [`Color`]. Each color or alpha component can take values
     /// that can be converted into a [`ComponentDetails`]. This automates the
     /// process of settings values to missing. For example:
+    ///
     /// ```rust
     /// use camelion::{Color, Space};
     /// let c = Color::new(Space::Srgb, None, None, None, 1.0);
     /// ```
+    ///
     /// will set all the color components to missing.
     pub fn new(
         space: Space,

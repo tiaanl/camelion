@@ -1,9 +1,8 @@
 //! Model a color in the sRGB color space.
 
-use std::marker::PhantomData;
-
 use crate::color::ComponentDetails;
 use crate::{Component, Flags, Space};
+use std::marker::PhantomData;
 
 mod space {
     /// This trait is used to identify tags that specify a color space/notation.

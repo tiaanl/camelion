@@ -1,6 +1,9 @@
 //! Implementations on all the models that has conversions to other models.
 
-use crate::{Color, Components, Hsl, Hwb, Space, Srgb, SrgbLinear};
+use crate::{Color, Component, Components, Hsl, Hwb, Space, Srgb, SrgbLinear, XyzD50, XyzD65};
+
+type Transform = euclid::default::Transform3D<Component>;
+type Vector = euclid::default::Vector3D<Component>;
 
 impl Color {
     /// Convert this color from its current color space/notation to the
@@ -123,6 +126,36 @@ impl Hwb {
         let Components(red, green, blue) =
             util::hwb_to_rgb(&Components(self.hue, self.whiteness, self.blackness));
         Srgb::new(red, green, blue, self.alpha)
+    }
+}
+
+impl XyzD50 {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        const MAT: Transform = Transform::new(
+             0.9554734527042182,   -0.028369706963208136,  0.012314001688319899, 0.0,
+            -0.023098536874261423,  1.0099954580058226,   -0.020507696433477912, 0.0,
+             0.0632593086610217,    0.021041398966943008,  1.3303659366080753,   0.0,
+             0.0,                   0.0,                   0.0,                  1.0,
+        );
+
+        let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
+        XyzD65::new(result.x, result.y, result.z, self.alpha)
+    }
+}
+
+impl XyzD65 {
+    pub fn to_xyz_d50(&self) -> XyzD50 {
+        #[rustfmt::skip]
+        const MAT: Transform = Transform::new(
+            1.0479298208405488,    0.029627815688159344, -0.009243058152591178, 0.0,
+            0.022946793341019088,  0.990434484573249,     0.015055144896577895, 0.0,
+            -0.05019222954313557,  -0.01707382502938514,   0.7518742899580008,   0.0,
+            0.0,                   0.0,                   0.0,                  1.0,
+        );
+
+        let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
+        XyzD50::new(result.x, result.y, result.z, self.alpha)
     }
 }
 
@@ -296,5 +329,21 @@ mod tests {
         assert_component_eq!(srgb.red, 0.15);
         assert_component_eq!(srgb.green, 0.3);
         assert_component_eq!(srgb.blue, 0.45);
+    }
+
+    #[test]
+    fn convert_xyz_d50_to_xyz_d65() {
+        let xyz_d65 = XyzD50::new(0.1, 0.2, 0.3, 0.4).to_xyz_d65();
+        assert_component_eq!(xyz_d65.x, 0.10990542);
+        assert_component_eq!(xyz_d65.y, 0.20547454);
+        assert_component_eq!(xyz_d65.z, 0.39623964);
+    }
+
+    #[test]
+    fn convert_xyz_d65_to_xyz_d50() {
+        let xyz_d50 = XyzD65::new(0.1, 0.2, 0.3, 0.4).to_xyz_d50();
+        assert_component_eq!(xyz_d50.x, 0.09432466);
+        assert_component_eq!(xyz_d50.y, 0.19592753);
+        assert_component_eq!(xyz_d50.z, 0.22764902);
     }
 }
