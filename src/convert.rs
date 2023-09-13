@@ -41,6 +41,14 @@ impl Color {
                 let hwb: &Hwb = unsafe { std::mem::transmute(self) };
                 return unsafe { std::mem::transmute(hwb.to_srgb()) };
             }
+            (S::XyzD50, S::XyzD65) => {
+                let xyz_d50: &XyzD50 = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(xyz_d50.to_xyz_d65()) };
+            }
+            (S::XyzD65, S::XyzD50) => {
+                let xyz_d65: &XyzD65 = unsafe { std::mem::transmute(self) };
+                return unsafe { std::mem::transmute(xyz_d65.to_xyz_d50()) };
+            }
             _ => {}
         }
 
