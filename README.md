@@ -2,13 +2,6 @@
 
 Color operations based on the CSS color spcification
 
-# Samples
-
-![srgb](samples/srgb.png)
-![srgb-linear](samples/srgb-linear.png)
-![hsl](samples/hsl.png)
-![hwb](samples/hwb.png)
-
 # License
 
 Licensed under either of
