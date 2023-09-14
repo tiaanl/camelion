@@ -4,20 +4,9 @@ use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::{Color, Component, Components, Flags, Space};
 use std::marker::PhantomData;
 
-mod space {
-    /// This trait is used to identify tags that specify a color space/notation.
-    pub trait Space {}
-
-    /// Tag for the sRGB color space.
-    pub struct Srgb;
-    impl Space for Srgb {}
-
-    /// Tag for the DisplayP3 color space.
-    pub struct DisplayP3;
-    impl Space for DisplayP3 {}
-}
-
 mod encoding {
+    use crate::Components;
+
     /// This trait is used to identity tags that specify gamma encoding.
     pub trait Encoding {}
 
@@ -26,14 +15,56 @@ mod encoding {
 
     pub struct LinearLight;
     impl Encoding for LinearLight {}
+
+    pub trait GammaConversion {
+        fn to_gamma_encoded(from: &Components) -> Components;
+        fn to_linear_light(from: &Components) -> Components;
+    }
 }
 
-pub trait HasGammaEncoding<S: space::Space> {
-    fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded>;
-}
+mod space {
+    use crate::Components;
 
-pub trait HasLinearLight<S: space::Space> {
-    fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight>;
+    use super::encoding::GammaConversion;
+
+    /// This trait is used to identify tags that specify a color space/notation.
+    pub trait Space {}
+
+    /// Tag for the sRGB color space.
+    pub struct Srgb;
+
+    impl Space for Srgb {}
+
+    impl GammaConversion for Srgb {
+        fn to_gamma_encoded(from: &Components) -> Components {
+            from.map(|value| {
+                let abs = value.abs();
+
+                if abs > 0.0031308 {
+                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
+                } else {
+                    12.92 * value
+                }
+            })
+        }
+
+        fn to_linear_light(from: &Components) -> Components {
+            from.map(|value| {
+                let abs = value.abs();
+
+                if abs < 0.04045 {
+                    value / 12.92
+                } else {
+                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
+                }
+            })
+        }
+    }
+
+    /// Tag for the DisplayP3 color space.
+    pub struct DisplayP3;
+
+    impl Space for DisplayP3 {}
 }
 
 /// A color specified in the sRGB color space.
@@ -84,79 +115,20 @@ impl<S: space::Space, E: encoding::Encoding> Rgb<S, E> {
     }
 }
 
-impl<S: space::Space> Rgb<S, encoding::GammaEncoded>
-where
-    Rgb<S, encoding::GammaEncoded>: HasLinearLight<S>,
-{
+impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded> {
     pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
-        <Self as HasLinearLight<S>>::to_linear_light(&self)
+        let Components(red, green, blue) =
+            S::to_linear_light(&Components(self.red, self.green, self.blue));
+        Rgb::new(red, green, blue, self.alpha)
     }
 }
 
-impl<S: space::Space> Rgb<S, encoding::LinearLight>
-where
-    Rgb<S, encoding::LinearLight>: HasGammaEncoding<S>,
-{
+impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::LinearLight> {
     pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
-        <Self as HasGammaEncoding<S>>::to_gamma_encoded(&self)
-    }
-}
-
-/// Model for a color in the sRGB color space with gamma encoding.
-pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
-
-impl HasSpace for Srgb {
-    const SPACE: Space = Space::Srgb;
-}
-
-impl HasLinearLight<space::Srgb> for Srgb {
-    /// Convert a gamma encoded sRGB color to a sRGB color without gamma
-    /// encoding (linear light).
-    fn to_linear_light(&self) -> SrgbLinear {
         let Components(red, green, blue) =
-            Components(self.red, self.green, self.blue).map(|value| {
-                let abs = value.abs();
-
-                if abs < 0.04045 {
-                    value / 12.92
-                } else {
-                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
-                }
-            });
-        SrgbLinear::new(red, green, blue, self.alpha)
+            S::to_gamma_encoded(&Components(self.red, self.green, self.blue));
+        Rgb::new(red, green, blue, self.alpha)
     }
-}
-
-/// Model for a color in the sRGB color space with no gamma encoding.
-pub type SrgbLinear = Rgb<space::Srgb, encoding::LinearLight>;
-
-impl HasGammaEncoding<space::Srgb> for SrgbLinear {
-    /// Convert a sRGB color without gamma encoding (linear light) to a sRGB
-    /// color with gamma encoding.
-    fn to_gamma_encoded(&self) -> Srgb {
-        let Components(red, green, blue) =
-            Components(self.red, self.green, self.blue).map(|value| {
-                let abs = value.abs();
-
-                if abs > 0.0031308 {
-                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
-                } else {
-                    12.92 * value
-                }
-            });
-        Srgb::new(red, green, blue, self.alpha)
-    }
-}
-
-impl HasSpace for SrgbLinear {
-    const SPACE: Space = Space::SrgbLinear;
-}
-
-/// Model for a color in the DisplayP3 color space with gamme encoding.
-pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
-
-impl HasSpace for DisplayP3 {
-    const SPACE: Space = Space::DisplayP3;
 }
 
 impl<S: space::Space, E: encoding::Encoding> From<Rgb<S, E>> for Color
@@ -171,4 +143,25 @@ where
             space: <Rgb<S, E> as HasSpace>::SPACE,
         }
     }
+}
+
+/// Model for a color in the sRGB color space with gamma encoding.
+pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
+
+impl HasSpace for Srgb {
+    const SPACE: Space = Space::Srgb;
+}
+
+/// Model for a color in the sRGB color space with no gamma encoding.
+pub type SrgbLinear = Rgb<space::Srgb, encoding::LinearLight>;
+
+impl HasSpace for SrgbLinear {
+    const SPACE: Space = Space::SrgbLinear;
+}
+
+/// Model for a color in the DisplayP3 color space with gamme encoding.
+pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
+
+impl HasSpace for DisplayP3 {
+    const SPACE: Space = Space::DisplayP3;
 }
