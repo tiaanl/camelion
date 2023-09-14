@@ -1,7 +1,7 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::color::ComponentDetails;
-use crate::{Component, Flags, Space};
+use crate::color::{ComponentDetails, SpacePlaceholder};
+use crate::{Color, Component, Components, Flags, Space};
 
 /// A color specified with the HSL notation in the sRGB color space.
 #[derive(Debug, PartialEq)]
@@ -16,7 +16,7 @@ pub struct Hsl {
     pub alpha: Component,
     /// Holds any flags that might be enabled for this color.
     pub flags: Flags,
-    _space: Space,
+    _space: SpacePlaceholder,
 }
 
 impl Hsl {
@@ -46,7 +46,18 @@ impl Hsl {
             lightness,
             alpha,
             flags,
-            _space: Space::Hsl,
+            _space: 0,
+        }
+    }
+}
+
+impl From<Hsl> for Color {
+    fn from(value: Hsl) -> Self {
+        Color {
+            components: Components(value.hue, value.saturation, value.lightness),
+            alpha: value.alpha,
+            flags: value.flags,
+            space: Space::Hsl,
         }
     }
 }

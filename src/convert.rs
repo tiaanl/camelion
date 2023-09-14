@@ -19,51 +19,18 @@ impl Color {
 
         // Handle direct conversions.
         match (self.space, space) {
-            (S::Srgb, S::SrgbLinear) => {
-                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(srgb.to_linear_light()) };
-            }
+            (S::Srgb, S::SrgbLinear) => return self.as_model::<Srgb>().to_linear_light().into(),
             (S::SrgbLinear, S::Srgb) => {
-                let srgb_linear: &SrgbLinear = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(srgb_linear.to_gamma_encoded()) };
+                return self.as_model::<SrgbLinear>().to_gamma_encoded().into()
             }
-            (S::Srgb, S::Hsl) => {
-                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(srgb.to_hsl()) };
-            }
-            (S::Hsl, S::Srgb) => {
-                let hsl: &Hsl = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(hsl.to_srgb()) };
-            }
-            (S::Srgb, S::Hwb) => {
-                let srgb: &Srgb = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(srgb.to_hwb()) };
-            }
-            (S::Hwb, S::Srgb) => {
-                let hwb: &Hwb = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(hwb.to_srgb()) };
-            }
-            (S::XyzD50, S::XyzD65) => {
-                let xyz_d50: &XyzD50 = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(xyz_d50.to_xyz_d65()) };
-            }
-            (S::XyzD65, S::XyzD50) => {
-                let xyz_d65: &XyzD65 = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(xyz_d65.to_xyz_d50()) };
-            }
-            _ => {}
-        }
-
-        // Handle a special case where the connecting space is sRGB.
-        match (self.space, space) {
-            (S::Hsl, S::Hwb) => {
-                let hsl: &Hsl = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(hsl.to_srgb().to_hwb()) };
-            }
-            (S::Hwb, S::Hsl) => {
-                let hwb: &Hwb = unsafe { std::mem::transmute(self) };
-                return unsafe { std::mem::transmute(hwb.to_srgb().to_hsl()) };
-            }
+            (S::Srgb, S::Hsl) => return self.as_model::<Srgb>().to_hsl().into(),
+            (S::Hsl, S::Srgb) => return self.as_model::<Hsl>().to_srgb().into(),
+            (S::Srgb, S::Hwb) => return self.as_model::<Srgb>().to_hwb().into(),
+            (S::Hwb, S::Srgb) => return self.as_model::<Hwb>().to_srgb().into(),
+            (S::XyzD50, S::XyzD65) => return self.as_model::<XyzD50>().to_xyz_d65().into(),
+            (S::XyzD65, S::XyzD50) => return self.as_model::<XyzD65>().to_xyz_d50().into(),
+            (S::Hsl, S::Hwb) => return self.as_model::<Hsl>().to_srgb().to_hwb().into(),
+            (S::Hwb, S::Hsl) => return self.as_model::<Hwb>().to_srgb().to_hsl().into(),
             _ => {}
         }
 
@@ -72,22 +39,6 @@ impl Color {
 }
 
 impl Srgb {
-    /// Convert a gamma encoded sRGB color to a sRGB color without gamma
-    /// encoding (linear light).
-    pub fn to_linear_light(&self) -> SrgbLinear {
-        let Components(red, green, blue) =
-            Components(self.red, self.green, self.blue).map(|value| {
-                let abs = value.abs();
-
-                if abs < 0.04045 {
-                    value / 12.92
-                } else {
-                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
-                }
-            });
-        SrgbLinear::new(red, green, blue, self.alpha)
-    }
-
     /// Convert a color specified in the sRGB color space to the HSL notation.
     pub fn to_hsl(&self) -> Hsl {
         let Components(hue, saturation, lightness) =
@@ -100,24 +51,6 @@ impl Srgb {
         let Components(hue, whitenss, blackness) =
             util::rgb_to_hwb(&Components(self.red, self.green, self.blue));
         Hwb::new(hue, whitenss, blackness, self.alpha)
-    }
-}
-
-impl SrgbLinear {
-    /// Convert a sRGB color without gamma encoding (linear light) to a sRGB
-    /// color with gamma encoding.
-    pub fn to_gamma_encoded(&self) -> Srgb {
-        let Components(red, green, blue) =
-            Components(self.red, self.green, self.blue).map(|value| {
-                let abs = value.abs();
-
-                if abs > 0.0031308 {
-                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
-                } else {
-                    12.92 * value
-                }
-            });
-        Srgb::new(red, green, blue, self.alpha)
     }
 }
 

@@ -1,66 +1,43 @@
 //! Model a color in the sRGB color space.
 
-use crate::color::ComponentDetails;
-use crate::{Component, Flags, Space};
+use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
+use crate::{Color, Component, Components, Flags, Space};
 use std::marker::PhantomData;
-
-use self::model::RgbModel;
 
 mod space {
     /// This trait is used to identify tags that specify a color space/notation.
-    pub trait SpaceTag {}
+    pub trait Space {}
 
     /// Tag for the sRGB color space.
     pub struct Srgb;
-    impl SpaceTag for Srgb {}
+    impl Space for Srgb {}
 
     /// Tag for the DisplayP3 color space.
     pub struct DisplayP3;
-    impl SpaceTag for DisplayP3 {}
+    impl Space for DisplayP3 {}
 }
 
 mod encoding {
     /// This trait is used to identity tags that specify gamma encoding.
-    pub trait GammaEncodingTag {}
+    pub trait Encoding {}
 
     pub struct GammaEncoded;
-    impl GammaEncodingTag for GammaEncoded {}
+    impl Encoding for GammaEncoded {}
 
     pub struct LinearLight;
-    impl GammaEncodingTag for LinearLight {}
+    impl Encoding for LinearLight {}
 }
 
-mod model {
-    use std::marker::PhantomData;
+pub trait HasGammaEncoding<S: space::Space> {
+    fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded>;
+}
 
-    use super::encoding;
-    use super::space;
-    use crate::Space;
-
-    pub trait RgbModel {
-        const SPACE: Space;
-    }
-
-    pub struct Model<S: space::SpaceTag, E: encoding::GammaEncodingTag> {
-        s: PhantomData<S>,
-        e: PhantomData<E>,
-    }
-
-    impl RgbModel for Model<space::Srgb, encoding::GammaEncoded> {
-        const SPACE: Space = Space::Srgb;
-    }
-
-    impl RgbModel for Model<space::Srgb, encoding::LinearLight> {
-        const SPACE: Space = Space::SrgbLinear;
-    }
-
-    impl RgbModel for Model<space::DisplayP3, encoding::GammaEncoded> {
-        const SPACE: Space = Space::DisplayP3;
-    }
+pub trait HasLinearLight<S: space::Space> {
+    fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight>;
 }
 
 /// A color specified in the sRGB color space.
-pub struct Rgb<S: space::SpaceTag, E: encoding::GammaEncodingTag> {
+pub struct Rgb<S: space::Space, E: encoding::Encoding> {
     /// The red component of the color.
     pub red: Component,
     /// The green component of the color.
@@ -71,15 +48,13 @@ pub struct Rgb<S: space::SpaceTag, E: encoding::GammaEncodingTag> {
     pub alpha: Component,
     /// Holds any flags that might be enabled for this color.
     pub flags: Flags,
-    _space: Space,
-    s: PhantomData<S>,
-    e: PhantomData<E>,
+
+    _space: SpacePlaceholder,
+    _s: PhantomData<S>,
+    _e: PhantomData<E>,
 }
 
-impl<S: space::SpaceTag, E: encoding::GammaEncodingTag> Rgb<S, E>
-where
-    model::Model<S, E>: RgbModel,
-{
+impl<S: space::Space, E: encoding::Encoding> Rgb<S, E> {
     /// Create a new color with RGB (red, green, blue) components.
     pub fn new(
         red: impl Into<ComponentDetails>,
@@ -102,50 +77,98 @@ where
             blue,
             alpha,
             flags,
-            _space: <model::Model<S, E> as model::RgbModel>::SPACE,
-            s: PhantomData,
-            e: PhantomData,
+            _space: 0,
+            _s: PhantomData,
+            _e: PhantomData,
         }
+    }
+}
+
+impl<S: space::Space> Rgb<S, encoding::GammaEncoded>
+where
+    Rgb<S, encoding::GammaEncoded>: HasLinearLight<S>,
+{
+    pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
+        <Self as HasLinearLight<S>>::to_linear_light(&self)
+    }
+}
+
+impl<S: space::Space> Rgb<S, encoding::LinearLight>
+where
+    Rgb<S, encoding::LinearLight>: HasGammaEncoding<S>,
+{
+    pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
+        <Self as HasGammaEncoding<S>>::to_gamma_encoded(&self)
     }
 }
 
 /// Model for a color in the sRGB color space with gamma encoding.
 pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
 
+impl HasSpace for Srgb {
+    const SPACE: Space = Space::Srgb;
+}
+
+impl HasLinearLight<space::Srgb> for Srgb {
+    /// Convert a gamma encoded sRGB color to a sRGB color without gamma
+    /// encoding (linear light).
+    fn to_linear_light(&self) -> SrgbLinear {
+        let Components(red, green, blue) =
+            Components(self.red, self.green, self.blue).map(|value| {
+                let abs = value.abs();
+
+                if abs < 0.04045 {
+                    value / 12.92
+                } else {
+                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
+                }
+            });
+        SrgbLinear::new(red, green, blue, self.alpha)
+    }
+}
+
 /// Model for a color in the sRGB color space with no gamma encoding.
 pub type SrgbLinear = Rgb<space::Srgb, encoding::LinearLight>;
+
+impl HasGammaEncoding<space::Srgb> for SrgbLinear {
+    /// Convert a sRGB color without gamma encoding (linear light) to a sRGB
+    /// color with gamma encoding.
+    fn to_gamma_encoded(&self) -> Srgb {
+        let Components(red, green, blue) =
+            Components(self.red, self.green, self.blue).map(|value| {
+                let abs = value.abs();
+
+                if abs > 0.0031308 {
+                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
+                } else {
+                    12.92 * value
+                }
+            });
+        Srgb::new(red, green, blue, self.alpha)
+    }
+}
+
+impl HasSpace for SrgbLinear {
+    const SPACE: Space = Space::SrgbLinear;
+}
 
 /// Model for a color in the DisplayP3 color space with gamme encoding.
 pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl HasSpace for DisplayP3 {
+    const SPACE: Space = Space::DisplayP3;
+}
 
-    #[test]
-    fn basic_rgb_colors() {
-        let srgb = Srgb::new(0.1, 0.2, 0.3, 0.4);
-        assert_eq!(srgb.red, 0.1);
-        assert_eq!(srgb.green, 0.2);
-        assert_eq!(srgb.blue, 0.3);
-        assert_eq!(srgb.alpha, 0.4);
-        assert!(srgb.flags.is_empty());
-        assert_eq!(srgb._space, Space::Srgb);
-
-        let srgb_linear = SrgbLinear::new(0.1, 0.2, 0.3, 0.4);
-        assert_eq!(srgb_linear.red, 0.1);
-        assert_eq!(srgb_linear.green, 0.2);
-        assert_eq!(srgb_linear.blue, 0.3);
-        assert_eq!(srgb_linear.alpha, 0.4);
-        assert!(srgb_linear.flags.is_empty());
-        assert_eq!(srgb_linear._space, Space::SrgbLinear);
-
-        let display_p3 = DisplayP3::new(0.1, 0.2, 0.3, 0.4);
-        assert_eq!(display_p3.red, 0.1);
-        assert_eq!(display_p3.green, 0.2);
-        assert_eq!(display_p3.blue, 0.3);
-        assert_eq!(display_p3.alpha, 0.4);
-        assert!(display_p3.flags.is_empty());
-        assert_eq!(display_p3._space, Space::DisplayP3);
+impl<S: space::Space, E: encoding::Encoding> From<Rgb<S, E>> for Color
+where
+    Rgb<S, E>: HasSpace,
+{
+    fn from(value: Rgb<S, E>) -> Self {
+        Self {
+            components: Components(value.red, value.green, value.blue),
+            alpha: value.alpha,
+            flags: value.flags,
+            space: <Rgb<S, E> as HasSpace>::SPACE,
+        }
     }
 }

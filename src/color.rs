@@ -39,6 +39,7 @@ bitflags! {
 /// Various color spaces and forms supported by the CSS specification.
 ///<https://drafts.csswg.org/css-color-4/#color-type>
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(u8)]
 pub enum Space {
     /// The sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#numeric-srgb>
@@ -60,6 +61,12 @@ pub enum Space {
     XyzD65,
     /// display-p3
     DisplayP3,
+}
+
+pub type SpacePlaceholder = u8;
+
+pub trait HasSpace {
+    const SPACE: Space;
 }
 
 #[derive(Clone, Debug)]
@@ -108,6 +115,11 @@ impl Color {
             flags,
             space,
         }
+    }
+
+    /// Return a reference to this color types as the given model.
+    pub fn as_model<T>(&self) -> &T {
+        unsafe { std::mem::transmute(self) }
     }
 }
 

@@ -1,7 +1,7 @@
 //! Model a color in the CIE-XYZ color space.
 
-use crate::color::ComponentDetails;
-use crate::{Component, Flags, Space};
+use crate::color::{ComponentDetails, HasSpace};
+use crate::{Color, Component, Components, Flags, Space};
 use std::marker::PhantomData;
 
 mod white_point {
@@ -67,5 +67,27 @@ impl<W: white_point::WhitePoint> Xyz<W> {
 /// Model for a color in the CIE-XYZ color space with a D50 white point.
 pub type XyzD50 = Xyz<white_point::D50>;
 
+impl HasSpace for XyzD50 {
+    const SPACE: Space = Space::XyzD50;
+}
+
 /// Model for a color in the CIE-XYZ color space with a D65 white point.
 pub type XyzD65 = Xyz<white_point::D65>;
+
+impl HasSpace for XyzD65 {
+    const SPACE: Space = Space::XyzD65;
+}
+
+impl<W: white_point::WhitePoint> From<Xyz<W>> for Color
+where
+    Xyz<W>: HasSpace,
+{
+    fn from(value: Xyz<W>) -> Self {
+        Self {
+            components: Components(value.x, value.y, value.z),
+            alpha: value.alpha,
+            flags: value.flags,
+            space: <Xyz<W> as HasSpace>::SPACE,
+        }
+    }
+}

@@ -1,7 +1,7 @@
 //! Model a color with the HWB notation in the sRGB color space.
 
-use crate::color::ComponentDetails;
-use crate::{Component, Flags, Space};
+use crate::color::{ComponentDetails, SpacePlaceholder};
+use crate::{Color, Component, Components, Flags, Space};
 
 /// A color specified with the HWB notation in the sRGB color space.
 pub struct Hwb {
@@ -15,7 +15,7 @@ pub struct Hwb {
     pub alpha: Component,
     /// Holds any flags that might be enabled for this color.
     pub flags: Flags,
-    _space: Space,
+    _space: SpacePlaceholder,
 }
 
 impl Hwb {
@@ -45,7 +45,18 @@ impl Hwb {
             blackness,
             alpha,
             flags,
-            _space: Space::Hwb,
+            _space: 0,
+        }
+    }
+}
+
+impl From<Hwb> for Color {
+    fn from(value: Hwb) -> Self {
+        Color {
+            components: Components(value.hue, value.whiteness, value.blackness),
+            alpha: value.alpha,
+            flags: value.flags,
+            space: Space::Hwb,
         }
     }
 }
