@@ -1,6 +1,6 @@
 //! Model a color in the CIE-XYZ color space.
 
-use crate::color::{ComponentDetails, HasSpace};
+use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::{Color, Component, Components, Flags, Space};
 use std::marker::PhantomData;
 
@@ -14,26 +14,29 @@ mod white_point {
 
     pub struct D50;
     impl WhitePoint for D50 {
+        #[allow(clippy::excessive_precision)]
         const WHITE_POINT: Components = Components(0.9642956764295677, 1.0, 0.8251046025104602);
         const SPACE: Space = Space::XyzD50;
     }
 
     pub struct D65;
     impl WhitePoint for D65 {
+        #[allow(clippy::excessive_precision)]
         const WHITE_POINT: Components = Components(0.9504559270516716, 1.0, 1.0890577507598784);
         const SPACE: Space = Space::XyzD65;
     }
 }
 
+#[derive(Clone)]
 pub struct Xyz<W: white_point::WhitePoint> {
     pub x: Component,
     pub y: Component,
     pub z: Component,
     pub alpha: Component,
     pub flags: Flags,
-    _space: Space,
 
-    white_point: PhantomData<W>,
+    _space: SpacePlaceholder,
+    _w: PhantomData<W>,
 }
 
 impl<W: white_point::WhitePoint> Xyz<W> {
@@ -58,8 +61,8 @@ impl<W: white_point::WhitePoint> Xyz<W> {
             z,
             alpha,
             flags,
-            _space: W::SPACE,
-            white_point: PhantomData,
+            _space: 0,
+            _w: PhantomData,
         }
     }
 }

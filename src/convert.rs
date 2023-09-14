@@ -1,7 +1,8 @@
 //! Implementations on all the models that has conversions to other models.
 
 use crate::{
-    Color, Component, Components, DisplayP3, Hsl, Hwb, Space, Srgb, SrgbLinear, XyzD50, XyzD65,
+    Color, Component, Components, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb, SrgbLinear,
+    XyzD50, XyzD65,
 };
 
 type Transform = euclid::default::Transform3D<Component>;
@@ -34,6 +35,45 @@ impl Color {
             _ => {}
         }
 
+        // The rest converts to XyzD50.
+        let _xyz: XyzD50 = match self.space {
+            S::Srgb => self
+                .as_model::<Srgb>()
+                .to_linear_light()
+                .to_xyz_d65()
+                .to_xyz_d50(),
+            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz_d65().to_xyz_d50(),
+            S::Hsl => self
+                .as_model::<Hsl>()
+                .to_srgb()
+                .to_linear_light()
+                .to_xyz_d65()
+                .to_xyz_d50(),
+            S::Hwb => self
+                .as_model::<Hwb>()
+                .to_srgb()
+                .to_linear_light()
+                .to_xyz_d65()
+                .to_xyz_d50(),
+            S::Lab => self.as_model::<Lab>().to_xyz_d50(),
+            S::Lch => self
+                .as_model::<Lch>()
+                .to_rectangular_orthogonal()
+                .to_xyz_d50(),
+            S::Oklab => self.as_model::<Oklab>().to_xyz_d65().to_xyz_d50(),
+            S::Oklch => self
+                .as_model::<Oklch>()
+                .to_rectangular_orthogonal()
+                .to_xyz_d65()
+                .to_xyz_d50(),
+            S::XyzD50 => {
+                // let xyz_d50: XyzD50 = self.as_model::<XyzD50>().clone();
+                todo!("why can't I clone this?")
+            }
+            S::XyzD65 => self.as_model::<XyzD65>().to_xyz_d50(),
+            S::DisplayP3 => todo!(),
+        };
+
         todo!()
     }
 }
@@ -51,6 +91,24 @@ impl Srgb {
         let Components(hue, whitenss, blackness) =
             util::rgb_to_hwb(&Components(self.red, self.green, self.blue));
         Hwb::new(hue, whitenss, blackness, self.alpha)
+    }
+}
+
+impl SrgbLinear {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const TO_XYZ: Transform = Transform::new(
+            0.4123907992659595,  0.21263900587151036, 0.01933081871559185, 0.0,
+            0.35758433938387796, 0.7151686787677559,  0.11919477979462599, 0.0,
+            0.1804807884018343,  0.07219231536073371, 0.9505321522496606,  0.0,
+            0.0,                 0.0,                 0.0,                 1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
+
+        XyzD65::new(x, y, z, self.alpha)
     }
 }
 
@@ -72,9 +130,82 @@ impl Hwb {
     }
 }
 
+impl Lab {
+    const KAPPA: f32 = 24389.0 / 27.0;
+    const EPSILON: f32 = 216.0 / 24389.0;
+
+    /// Convert a CIELAB color to XYZ as specified in [1] and [2].
+    ///
+    /// [1]: https://drafts.csswg.org/css-color/#lab-to-predefined
+    /// [2]: https://drafts.csswg.org/css-color/#color-conversion-code
+    pub fn to_xyz_d50(&self) -> XyzD50 {
+        // To avoid accessing the values through self all the time.
+        let (lightness, a, b) = (self.lightness, self.a, self.b);
+
+        let f1 = (lightness + 16.0) / 116.0;
+        let f0 = f1 + a / 500.0;
+        let f2 = f1 - b / 200.0;
+
+        let f0_cubed = f0 * f0 * f0;
+        let x = if f0_cubed > Self::EPSILON {
+            f0_cubed
+        } else {
+            (116.0 * f0 - 16.0) / Self::KAPPA
+        };
+
+        let y = if lightness > Self::KAPPA * Self::EPSILON {
+            let v = (lightness + 16.0) / 116.0;
+            v * v * v
+        } else {
+            lightness / Self::KAPPA
+        };
+
+        let f2_cubed = f2 * f2 * f2;
+        let z = if f2_cubed > Self::EPSILON {
+            f2_cubed
+        } else {
+            (116.0 * f2 - 16.0) / Self::KAPPA
+        };
+
+        XyzD50::new(x, y, z, self.alpha)
+    }
+}
+
+impl Oklab {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const OKLAB_TO_LMS: Transform = Transform::new(
+            0.99999999845051981432,  1.0000000088817607767,    1.0000000546724109177,   0.0,
+            0.39633779217376785678, -0.1055613423236563494,   -0.089484182094965759684, 0.0,
+            0.21580375806075880339, -0.063854174771705903402, -1.2914855378640917399,   0.0,
+            0.0,                     0.0,                      0.0,                     1.0,
+        );
+
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const LMS_TO_XYZ: Transform = Transform::new(
+             1.2268798733741557,  -0.04057576262431372, -0.07637294974672142, 0.0,
+            -0.5578149965554813,   1.1122868293970594,  -0.4214933239627914,  0.0,
+             0.28139105017721583, -0.07171106666151701,  1.5869240244272418,  0.0,
+             0.0,                  0.0,                  0.0,                 1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            OKLAB_TO_LMS.transform_vector3d(Vector::new(self.lightness, self.a, self.b));
+        let x = x * x * x;
+        let y = y * y * y;
+        let z = z * z * z;
+        let Vector { x, y, z, .. } = LMS_TO_XYZ.transform_vector3d(Vector::new(x, y, z));
+
+        XyzD65::new(x, y, z, self.alpha)
+    }
+}
+
 impl XyzD50 {
     pub fn to_xyz_d65(&self) -> XyzD65 {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const MAT: Transform = Transform::new(
              0.9554734527042182,   -0.028369706963208136,  0.012314001688319899, 0.0,
             -0.023098536874261423,  1.0099954580058226,   -0.020507696433477912, 0.0,
@@ -90,6 +221,7 @@ impl XyzD50 {
 impl XyzD65 {
     pub fn to_xyz_d50(&self) -> XyzD50 {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const MAT: Transform = Transform::new(
             1.0479298208405488,    0.029627815688159344, -0.009243058152591178, 0.0,
             0.022946793341019088,  0.990434484573249,     0.015055144896577895, 0.0,
@@ -100,12 +232,6 @@ impl XyzD65 {
         let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
         XyzD50::new(result.x, result.y, result.z, self.alpha)
     }
-}
-
-impl DisplayP3 {
-    // pub fn to_linear_light(&self) -> DisplayP3Linear {
-    //     todo!()
-    // }
 }
 
 mod util {

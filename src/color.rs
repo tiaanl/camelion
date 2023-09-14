@@ -55,6 +55,14 @@ pub enum Space {
     /// method of specifying colors in the sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
     Hwb,
+    /// Lab
+    Lab,
+    /// Lch
+    Lch,
+    /// Oklab
+    Oklab,
+    /// Oklch
+    Oklch,
     /// xyz-d50
     XyzD50,
     /// xyz-d65
