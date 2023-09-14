@@ -1,12 +1,9 @@
 //! Implementations on all the models that has conversions to other models.
 
 use crate::{
-    Color, Component, Components, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb, SrgbLinear,
-    XyzD50, XyzD65,
+    xyz::ConvertToXyz, Color, Components, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb,
+    SrgbLinear, Transform, Vector, XyzD50, XyzD65,
 };
-
-type Transform = euclid::default::Transform3D<Component>;
-type Vector = euclid::default::Vector3D<Component>;
 
 impl Color {
     /// Convert this color from its current color space/notation to the
@@ -40,20 +37,20 @@ impl Color {
             S::Srgb => self
                 .as_model::<Srgb>()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
-            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz_d65().to_xyz_d50(),
+            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz().to_xyz_d50(),
             S::Hsl => self
                 .as_model::<Hsl>()
                 .to_srgb()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
             S::Hwb => self
                 .as_model::<Hwb>()
                 .to_srgb()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
             S::Lab => self.as_model::<Lab>().to_xyz_d50(),
             S::Lch => self
@@ -91,24 +88,6 @@ impl Srgb {
         let Components(hue, whitenss, blackness) =
             util::rgb_to_hwb(&Components(self.red, self.green, self.blue));
         Hwb::new(hue, whitenss, blackness, self.alpha)
-    }
-}
-
-impl SrgbLinear {
-    pub fn to_xyz_d65(&self) -> XyzD65 {
-        #[rustfmt::skip]
-        #[allow(clippy::excessive_precision)]
-        const TO_XYZ: Transform = Transform::new(
-            0.4123907992659595,  0.21263900587151036, 0.01933081871559185, 0.0,
-            0.35758433938387796, 0.7151686787677559,  0.11919477979462599, 0.0,
-            0.1804807884018343,  0.07219231536073371, 0.9505321522496606,  0.0,
-            0.0,                 0.0,                 0.0,                 1.0,
-        );
-
-        let Vector { x, y, z, .. } =
-            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
-
-        XyzD65::new(x, y, z, self.alpha)
     }
 }
 

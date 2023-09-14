@@ -1,7 +1,8 @@
 //! Model a color in the sRGB color space.
 
 use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
-use crate::{Color, Component, Components, Flags, Space};
+use crate::xyz::{ConvertToXyz, Xyz};
+use crate::{Color, Component, Components, Flags, Space, Transform, Vector, D65};
 use std::marker::PhantomData;
 
 mod encoding {
@@ -150,6 +151,24 @@ pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
 
 impl HasSpace for Srgb {
     const SPACE: Space = Space::Srgb;
+}
+
+impl ConvertToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
+    fn to_xyz(&self) -> Xyz<D65> {
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const TO_XYZ: Transform = Transform::new(
+            0.4123907992659595,  0.21263900587151036, 0.01933081871559185, 0.0,
+            0.35758433938387796, 0.7151686787677559,  0.11919477979462599, 0.0,
+            0.1804807884018343,  0.07219231536073371, 0.9505321522496606,  0.0,
+            0.0,                 0.0,                 0.0,                 1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
+
+        Xyz::new(x, y, z, self.alpha)
+    }
 }
 
 /// Model for a color in the sRGB color space with no gamma encoding.
