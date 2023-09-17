@@ -1,8 +1,8 @@
 //! Implementations on all the models that has conversions to other models.
 
 use crate::{
-    xyz::ConvertToXyz, Color, Components, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb,
-    SrgbLinear, Transform, Vector, XyzD50, XyzD65,
+    rgb::DisplayP3Linear, xyz::ConvertToXyz, Color, Components, DisplayP3, Hsl, Hwb, Lab, Lch,
+    Oklab, Oklch, Space, Srgb, SrgbLinear, Transform, Vector, XyzD50, XyzD65,
 };
 
 impl Color {
@@ -33,7 +33,7 @@ impl Color {
         }
 
         // The rest converts to XyzD50.
-        let _xyz: XyzD50 = match self.space {
+        let xyz: XyzD50 = match self.space {
             S::Srgb => self
                 .as_model::<Srgb>()
                 .to_linear_light()
@@ -68,10 +68,34 @@ impl Color {
                 todo!("why can't I clone this?")
             }
             S::XyzD65 => self.as_model::<XyzD65>().to_xyz_d50(),
-            S::DisplayP3 => todo!(),
+            S::DisplayP3 => self
+                .as_model::<DisplayP3>()
+                .to_linear_light()
+                .to_xyz_d65()
+                .to_xyz_d50(),
         };
 
-        todo!()
+        match space {
+            S::Srgb => SrgbLinear::from(xyz.to_xyz_d65()).to_gamma_encoded().into(),
+            S::SrgbLinear => SrgbLinear::from(xyz.to_xyz_d65()).into(),
+            S::Hsl => SrgbLinear::from(xyz.to_xyz_d65())
+                .to_gamma_encoded()
+                .to_hsl()
+                .into(),
+            S::Hwb => SrgbLinear::from(xyz.to_xyz_d65())
+                .to_gamma_encoded()
+                .to_hwb()
+                .into(),
+            S::Lab => Lab::from(xyz).into(),
+            S::Lch => Lab::from(xyz).to_cylindrical_polar().into(),
+            S::Oklab => Oklab::from(xyz.to_xyz_d65()).into(),
+            S::Oklch => Oklab::from(xyz.to_xyz_d65()).to_cylindrical_polar().into(),
+            S::DisplayP3 => DisplayP3Linear::from(xyz.to_xyz_d65())
+                .to_gamma_encoded()
+                .into(),
+            S::XyzD50 => xyz.into(),
+            S::XyzD65 => xyz.to_xyz_d65().into(),
+        }
     }
 }
 

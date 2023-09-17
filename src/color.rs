@@ -131,10 +131,6 @@ impl Color {
     }
 }
 
-pub trait IntoColor {
-    fn into_color(self) -> Color;
-}
-
 pub struct ComponentDetails {
     value: Component,
     is_none: bool,

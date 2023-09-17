@@ -2,7 +2,7 @@
 
 use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::xyz::{ConvertToXyz, Xyz};
-use crate::{Color, Component, Components, Flags, Space, Transform, Vector, D65};
+use crate::{Color, Component, Components, Flags, Space, Transform, Vector, XyzD65, D65};
 use std::marker::PhantomData;
 
 mod encoding {
@@ -66,6 +66,16 @@ mod space {
     pub struct DisplayP3;
 
     impl Space for DisplayP3 {}
+
+    impl GammaConversion for DisplayP3 {
+        fn to_gamma_encoded(from: &Components) -> Components {
+            Srgb::to_gamma_encoded(from)
+        }
+
+        fn to_linear_light(from: &Components) -> Components {
+            Srgb::to_linear_light(from)
+        }
+    }
 }
 
 /// A color specified in the sRGB color space.
@@ -153,6 +163,23 @@ impl HasSpace for Srgb {
     const SPACE: Space = Space::Srgb;
 }
 
+impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
+    fn from(value: Xyz<D65>) -> Self {
+        #[rustfmt::skip]
+        const FROM_XYZ: Transform = Transform::new(
+             3.2409699419045213, -0.9692436362808798,  0.05563007969699361, 0.0,
+            -1.5373831775700935,  1.8759675015077206, -0.20397695888897657, 0.0,
+            -0.4986107602930033,  0.04155505740717561, 1.0569715142428786,  0.0,
+             0.0,                 0.0,                 0.0,                 1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            FROM_XYZ.transform_vector3d(Vector::new(value.x, value.y, value.z));
+
+        Self::new(x, y, z, value.alpha)
+    }
+}
+
 impl ConvertToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
@@ -180,7 +207,42 @@ impl HasSpace for SrgbLinear {
 
 /// Model for a color in the DisplayP3 color space with gamme encoding.
 pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
+pub type DisplayP3Linear = Rgb<space::DisplayP3, encoding::LinearLight>;
 
 impl HasSpace for DisplayP3 {
     const SPACE: Space = Space::DisplayP3;
+}
+
+impl DisplayP3Linear {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        const TO_XYZ: Transform = Transform::new(
+            0.48657094864821626, 0.22897456406974884, 0.0,                  0.0,
+            0.26566769316909294, 0.6917385218365062,  0.045113381858902575, 0.0,
+            0.1982172852343625,  0.079286914093745,   1.0439443689009757,   0.0,
+            0.0,                 0.0,                 0.0,                  1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
+
+        XyzD65::new(x, y, z, self.alpha)
+    }
+}
+
+impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
+    fn from(value: Xyz<D65>) -> Self {
+        #[rustfmt::skip]
+        const FROM_XYZ: Transform = Transform::new(
+             2.4934969119414245,  -0.829488969561575,    0.035845830243784335, 0.0,
+            -0.9313836179191236,   1.7626640603183468,  -0.07617238926804171,  0.0,
+            -0.40271078445071684,  0.02362468584194359,  0.9568845240076873,   0.0,
+             0.0,                  0.0,                  0.0,                  1.0,
+        );
+
+        let Vector { x, y, z, .. } =
+            FROM_XYZ.transform_vector3d(Vector::new(value.x, value.y, value.z));
+
+        Self::new(x, y, z, value.alpha)
+    }
 }
