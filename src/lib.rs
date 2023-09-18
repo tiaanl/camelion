@@ -8,6 +8,7 @@ mod convert;
 mod hsl;
 mod hwb;
 mod lab;
+mod math;
 mod rgb;
 mod xyz;
 
@@ -17,7 +18,3 @@ pub use hwb::Hwb;
 pub use lab::{Lab, Lch, Oklab, Oklch};
 pub use rgb::{DisplayP3, Srgb, SrgbLinear};
 pub use xyz::{XyzD50, XyzD65, D50, D65};
-
-// Some common types.
-type Transform = euclid::default::Transform3D<Component>;
-type Vector = euclid::default::Vector3D<Component>;

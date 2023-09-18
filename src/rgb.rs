@@ -1,8 +1,9 @@
 //! Model a color in the sRGB color space.
 
 use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
+use crate::math::{transform, Transform};
 use crate::xyz::{ConvertToXyz, Xyz};
-use crate::{Color, Component, Components, Flags, Space, Transform, Vector, XyzD65, D65};
+use crate::{Color, Component, Components, Flags, Space, XyzD65, D65};
 use std::marker::PhantomData;
 
 mod encoding {
@@ -173,10 +174,8 @@ impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
              0.0,                 0.0,                 0.0,                 1.0,
         );
 
-        let Vector { x, y, z, .. } =
-            FROM_XYZ.transform_vector3d(Vector::new(value.x, value.y, value.z));
-
-        Self::new(x, y, z, value.alpha)
+        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
+        Self::new(red, green, blue, value.alpha)
     }
 }
 
@@ -191,9 +190,7 @@ impl ConvertToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
             0.0,                 0.0,                 0.0,                 1.0,
         );
 
-        let Vector { x, y, z, .. } =
-            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
-
+        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
         Xyz::new(x, y, z, self.alpha)
     }
 }
@@ -223,9 +220,7 @@ impl DisplayP3Linear {
             0.0,                 0.0,                 0.0,                  1.0,
         );
 
-        let Vector { x, y, z, .. } =
-            TO_XYZ.transform_vector3d(Vector::new(self.red, self.green, self.blue));
-
+        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
         XyzD65::new(x, y, z, self.alpha)
     }
 }
@@ -240,9 +235,7 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
              0.0,                  0.0,                  0.0,                  1.0,
         );
 
-        let Vector { x, y, z, .. } =
-            FROM_XYZ.transform_vector3d(Vector::new(value.x, value.y, value.z));
-
-        Self::new(x, y, z, value.alpha)
+        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
+        Self::new(red, green, blue, value.alpha)
     }
 }

@@ -2,8 +2,9 @@ use std::marker::PhantomData;
 
 use crate::{
     color::{ComponentDetails, SpacePlaceholder},
+    math::{transform, Transform},
     xyz::white_point::WhitePoint,
-    Color, Component, Components, Flags, Space, Transform, Vector, XyzD50, XyzD65, D50,
+    Color, Component, Components, Flags, Space, XyzD50, XyzD65, D50,
 };
 
 mod space {
@@ -190,11 +191,10 @@ impl From<XyzD65> for Oklab {
              0.0,           0.0,           0.0,          1.0,
         );
 
-        let lms = XYZ_TO_LMS.transform_vector3d(Vector::new(value.x, value.y, value.z));
-        let lms = Vector::new(lms.x.cbrt(), lms.y.cbrt(), lms.z.cbrt());
-        let Vector { x, y, z, .. } = LMS_TO_OKLAB.transform_vector3d(lms);
-
-        Self::new(x, y, z, value.alpha)
+        let lms = transform(&XYZ_TO_LMS, value.x, value.y, value.z);
+        let [x, y, z] = lms.map(|v| v.cbrt());
+        let [lightness, a, b] = transform(&LMS_TO_OKLAB, x, y, z);
+        Self::new(lightness, a, b, value.alpha)
     }
 }
 

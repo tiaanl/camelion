@@ -1,8 +1,11 @@
 //! Implementations on all the models that has conversions to other models.
 
 use crate::{
-    rgb::DisplayP3Linear, xyz::ConvertToXyz, Color, Components, DisplayP3, Hsl, Hwb, Lab, Lch,
-    Oklab, Oklch, Space, Srgb, SrgbLinear, Transform, Vector, XyzD50, XyzD65,
+    math::{transform, Transform},
+    rgb::DisplayP3Linear,
+    xyz::ConvertToXyz,
+    Color, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb, SrgbLinear,
+    XyzD50, XyzD65,
 };
 
 impl Color {
@@ -194,12 +197,11 @@ impl Oklab {
              0.0,                  0.0,                  0.0,                 1.0,
         );
 
-        let Vector { x, y, z, .. } =
-            OKLAB_TO_LMS.transform_vector3d(Vector::new(self.lightness, self.a, self.b));
+        let [x, y, z] = transform(&OKLAB_TO_LMS, self.lightness, self.a, self.b);
         let x = x * x * x;
         let y = y * y * y;
         let z = z * z * z;
-        let Vector { x, y, z, .. } = LMS_TO_XYZ.transform_vector3d(Vector::new(x, y, z));
+        let [x, y, z] = transform(&LMS_TO_XYZ, x, y, z);
 
         XyzD65::new(x, y, z, self.alpha)
     }
@@ -216,8 +218,8 @@ impl XyzD50 {
              0.0,                   0.0,                   0.0,                  1.0,
         );
 
-        let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
-        XyzD65::new(result.x, result.y, result.z, self.alpha)
+        let [x, y, z] = transform(&MAT, self.x, self.y, self.z);
+        XyzD65::new(x, y, z, self.alpha)
     }
 }
 
@@ -232,8 +234,8 @@ impl XyzD65 {
             0.0,                   0.0,                   0.0,                  1.0,
         );
 
-        let result = MAT.transform_vector3d(Vector::new(self.x, self.y, self.z));
-        XyzD50::new(result.x, result.y, result.z, self.alpha)
+        let [x, y, z] = transform(&MAT, self.x, self.y, self.z);
+        XyzD50::new(x, y, z, self.alpha)
     }
 }
 
