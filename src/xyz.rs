@@ -12,6 +12,7 @@ pub mod white_point {
     }
 
     /// CIE-XYZ color with a D50 white point reference.
+    #[derive(Debug)]
     pub struct D50;
     impl WhitePoint for D50 {
         #[allow(clippy::excessive_precision)]
@@ -19,6 +20,7 @@ pub mod white_point {
     }
 
     /// CIE-XYZ color with a D65 white point reference.
+    #[derive(Debug)]
     pub struct D65;
     impl WhitePoint for D65 {
         #[allow(clippy::excessive_precision)]
@@ -34,7 +36,7 @@ pub trait ConvertToXyz<W: white_point::WhitePoint> {
 
 pub use white_point::{D50, D65};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Xyz<W: white_point::WhitePoint> {
     pub x: Component,
     pub y: Component,

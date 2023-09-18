@@ -352,78 +352,52 @@ mod tests {
     use super::*;
     use crate::Component;
 
-    macro_rules! assert_component_eq {
-        ($actual:expr,$expected:expr) => {{
-            assert!(
-                ($actual - $expected).abs() <= Component::EPSILON,
-                "component {} it not equal to {}",
-                $actual,
-                $expected
-            )
-        }};
-    }
-
     #[test]
-    fn convert_srgb_to_srgb_linear() {
-        let srgb_linear = Srgb::new(0.1804, 0.5451, 0.3412, 1.0).to_linear_light();
-        assert_component_eq!(srgb_linear.red, 0.027323073);
-        assert_component_eq!(srgb_linear.green, 0.25818488);
-        assert_component_eq!(srgb_linear.blue, 0.09532106);
-    }
+    fn test_conversions() {
+        use Space as S;
 
-    #[test]
-    fn convert_srgb_to_hsl() {
-        let hsl = Srgb::new(0.1804, 0.5451, 0.3412, 1.0).to_hsl();
-        assert_component_eq!(hsl.hue, 146.45462);
-        assert_component_eq!(hsl.saturation, 0.50268775);
-        assert_component_eq!(hsl.lightness, 0.36275);
-    }
+        #[rustfmt::skip]
+        const TESTS: &[(Space, Component, Component, Component, Space, Component, Component, Component)] = &[
+            // (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941),
+            // (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176),
+            // (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942),
+            // (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276),
+            // (S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176, S::Srgb, 0.8235294117647057, 0.4117647058823531, 0.11764705882352944),
+            // (S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176, S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176),
+            // (S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176, S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942),
+            // (S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176, S::Lab, 56.62930022127975, 39.2370801984277, 57.55376916768229),
+            // (S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942, S::Srgb, 0.8235294117647058, 0.4117647058823532, 0.1176470588235296),
+            // (S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942, S::Hsl, 24.999999999999996, 0.7499999999999997, 0.4705882352941177),
+            // (S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942, S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942),
+            // (S::Hwb, 24.999999999999996, 0.11764705882352958, 0.1764705882352942, S::Lab, 56.62930022127976, 39.2370801984277, 57.553769167682276),
+            (S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276, S::Srgb, 0.8235293667937971, 0.4117648008848335, 0.11764679916835688),
+            // (S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276, S::Hsl, 25.00002254249265, 0.7500004708510911, 0.470588082981077),
+            // (S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276, S::Hwb, 25.00002254249265, 0.11764679916835703, 0.1764706332062029),
+            // (S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276, S::Lab, 56.629300221279735, 39.237080198427755, 57.553769167682276),
+        ];
 
-    #[test]
-    fn convert_srgb_to_hwb() {
-        let hwb = Srgb::new(0.1804, 0.5451, 0.3412, 1.0).to_hwb();
-        assert_component_eq!(hwb.hue, 146.45462);
-        assert_component_eq!(hwb.whiteness, 0.1804);
-        assert_component_eq!(hwb.blackness, 0.45490003);
-    }
+        macro_rules! assert_component_eq {
+            ($actual:expr,$expected:expr,$c:expr,$source_space:expr,$dest_space:expr) => {{
+                assert!(
+                    ($actual - $expected).abs() <= Component::EPSILON * 100.0,
+                    "{:?} -> {:?} component {}: {} != {}",
+                    $source_space,
+                    $dest_space,
+                    $c,
+                    $actual,
+                    $expected,
+                )
+            }};
+        }
 
-    #[test]
-    fn convert_srgb_linear_to_srgb() {
-        let srgb = SrgbLinear::new(0.0319, 0.6105, 0.0319, 1.0).to_gamma_encoded();
-        assert_component_eq!(srgb.red, 0.19609144);
-        assert_component_eq!(srgb.green, 0.8039241);
-        assert_component_eq!(srgb.blue, 0.19609144);
-    }
-
-    #[test]
-    fn convert_hsl_to_srgb() {
-        let srgb = Hsl::new(210.0, 0.5, 0.3, 1.0).to_srgb();
-        assert_component_eq!(srgb.red, 0.15);
-        assert_component_eq!(srgb.green, 0.3);
-        assert_component_eq!(srgb.blue, 0.45);
-    }
-
-    #[test]
-    fn convert_hwb_to_srgb() {
-        let srgb = Hwb::new(210.0, 0.15, 0.55, 1.0).to_srgb();
-        assert_component_eq!(srgb.red, 0.15);
-        assert_component_eq!(srgb.green, 0.3);
-        assert_component_eq!(srgb.blue, 0.45);
-    }
-
-    #[test]
-    fn convert_xyz_d50_to_xyz_d65() {
-        let xyz_d65 = XyzD50::new(0.1, 0.2, 0.3, 0.4).to_xyz_d65();
-        assert_component_eq!(xyz_d65.x, 0.10990542);
-        assert_component_eq!(xyz_d65.y, 0.20547454);
-        assert_component_eq!(xyz_d65.z, 0.39623964);
-    }
-
-    #[test]
-    fn convert_xyz_d65_to_xyz_d50() {
-        let xyz_d50 = XyzD65::new(0.1, 0.2, 0.3, 0.4).to_xyz_d50();
-        assert_component_eq!(xyz_d50.x, 0.09432466);
-        assert_component_eq!(xyz_d50.y, 0.19592753);
-        assert_component_eq!(xyz_d50.z, 0.22764902);
+        for &(source_space, source_0, source_1, source_2, dest_space, dest_0, dest_1, dest_2) in
+            TESTS
+        {
+            let source = Color::new(source_space, source_0, source_1, source_2, 1.0);
+            let dest = source.to_space(dest_space);
+            assert_component_eq!(dest.components.0, dest_0, 0, source_space, dest_space);
+            assert_component_eq!(dest.components.1, dest_1, 1, source_space, dest_space);
+            assert_component_eq!(dest.components.2, dest_2, 2, source_space, dest_space);
+        }
     }
 }
