@@ -65,6 +65,8 @@ pub enum Space {
     XyzD65,
     /// display-p3
     DisplayP3,
+    /// a98-rgb
+    A98Rgb,
 }
 
 pub type SpacePlaceholder = u8;

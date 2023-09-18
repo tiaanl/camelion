@@ -2,9 +2,9 @@
 
 use crate::{
     math::{transform, Transform},
-    rgb::DisplayP3Linear,
+    rgb::{A98RgbLinear, DisplayP3Linear},
     xyz::{white_point::WhitePoint, ConvertToXyz},
-    Color, Component, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb,
+    A98Rgb, Color, Component, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, Space, Srgb,
     SrgbLinear, XyzD50, XyzD65, D50,
 };
 
@@ -73,6 +73,11 @@ impl Color {
                 .to_linear_light()
                 .to_xyz_d65()
                 .to_xyz_d50(),
+            S::A98Rgb => self
+                .as_model::<A98Rgb>()
+                .to_linear_light()
+                .to_xyz_d65()
+                .to_xyz_d50(),
         };
 
         match space {
@@ -91,6 +96,9 @@ impl Color {
             S::Oklab => Oklab::from(xyz.to_xyz_d65()).into(),
             S::Oklch => Oklab::from(xyz.to_xyz_d65()).to_cylindrical_polar().into(),
             S::DisplayP3 => DisplayP3Linear::from(xyz.to_xyz_d65())
+                .to_gamma_encoded()
+                .into(),
+            S::A98Rgb => A98RgbLinear::from(xyz.to_xyz_d65())
                 .to_gamma_encoded()
                 .into(),
             S::XyzD50 => xyz.into(),

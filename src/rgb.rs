@@ -81,6 +81,22 @@ mod space {
             Srgb::to_linear_light(from)
         }
     }
+
+    /// Tag for the a98-rgb color space.
+    #[derive(Debug)]
+    pub struct A98Rgb;
+
+    impl Space for A98Rgb {}
+
+    impl GammaConversion for A98Rgb {
+        fn to_gamma_encoded(from: &Components) -> Components {
+            from.map(|v| v.signum() * v.abs().powf(256.0 / 563.0))
+        }
+
+        fn to_linear_light(from: &Components) -> Components {
+            from.map(|v| v.signum() * v.abs().powf(563.0 / 256.0))
+        }
+    }
 }
 
 /// A color specified in the sRGB color space.
@@ -241,6 +257,44 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
             -0.9313836179191236,   1.7626640603183468,  -0.07617238926804171,  0.0,
             -0.40271078445071684,  0.02362468584194359,  0.9568845240076873,   0.0,
              0.0,                  0.0,                  0.0,                  1.0,
+        );
+
+        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
+        Self::new(red, green, blue, value.alpha)
+    }
+}
+
+/// Model for a color in the a98 RGB color space with gamma encoding.
+pub type A98Rgb = Rgb<space::A98Rgb, Gamma>;
+pub type A98RgbLinear = Rgb<space::A98Rgb, Linear>;
+
+impl HasSpace for A98Rgb {
+    const SPACE: Space = Space::A98Rgb;
+}
+
+impl A98RgbLinear {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        const TO_XYZ: Transform = Transform::new(
+            0.5766690429101308,  0.29734497525053616, 0.027031361386412378, 0.0,
+            0.18555823790654627, 0.627363566255466,   0.07068885253582714,  0.0,
+            0.18822864623499472, 0.07529145849399789, 0.9913375368376389,   0.0,
+            0.0,                 0.0,                 0.0,                  1.0,
+        );
+
+        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
+        XyzD65::new(x, y, z, self.alpha)
+    }
+}
+
+impl From<XyzD65> for A98RgbLinear {
+    fn from(value: XyzD65) -> Self {
+        #[rustfmt::skip]
+        const FROM_XYZ: Transform = Transform::new(
+             2.041587903810746,  -0.9692436362808798,   0.013444280632031024, 0.0,
+            -0.5650069742788596,  1.8759675015077206,  -0.11836239223101824,  0.0,
+            -0.3447313507783295,  0.04155505740717561,  1.0151749943912054,   0.0,
+             0.0,                 0.0,                  0.0,                  1.0,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
