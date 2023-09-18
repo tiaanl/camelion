@@ -131,6 +131,9 @@ impl Color {
     }
 }
 
+/// A struct that holds details about a component passed to any of the `new`
+/// functions for color models. Any components that can be passed implements
+/// a `From<?> for ComponentDetails`.
 pub struct ComponentDetails {
     value: Component,
     is_none: bool,
