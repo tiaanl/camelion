@@ -3,7 +3,7 @@
 use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::math::{transform, Transform};
 use crate::xyz::{ConvertToXyz, Xyz};
-use crate::{Color, Component, Components, Flags, Space, XyzD65, D65};
+use crate::{Color, Component, Components, Flags, Space, XyzD50, XyzD65, D65};
 use std::marker::PhantomData;
 
 mod encoding {
@@ -27,9 +27,8 @@ mod encoding {
 }
 
 mod space {
-    use crate::Components;
-
-    use super::encoding::GammaConversion;
+    use super::GammaConversion;
+    use crate::{Component, Components};
 
     /// This trait is used to identify tags that specify a color space/notation.
     pub trait Space {}
@@ -95,6 +94,42 @@ mod space {
 
         fn to_linear_light(from: &Components) -> Components {
             from.map(|v| v.signum() * v.abs().powf(563.0 / 256.0))
+        }
+    }
+
+    /// Tag for the ProPhoto RGB color space.
+    #[derive(Debug)]
+    pub struct ProPhotoRgb;
+
+    impl Space for ProPhotoRgb {}
+
+    impl GammaConversion for ProPhotoRgb {
+        fn to_gamma_encoded(from: &Components) -> Components {
+            const E: Component = 1.0 / 512.0;
+
+            from.map(|v| {
+                let abs = v.abs();
+
+                if abs >= E {
+                    v.signum() * abs.powf(1.0 / 1.8)
+                } else {
+                    16.0 * v
+                }
+            })
+        }
+
+        fn to_linear_light(from: &Components) -> Components {
+            const E: Component = 16.0 / 512.0;
+
+            from.map(|v| {
+                let abs = v.abs();
+
+                if abs <= E {
+                    v / 16.0
+                } else {
+                    v.signum() * abs.powf(1.8)
+                }
+            })
         }
     }
 }
@@ -295,6 +330,44 @@ impl From<XyzD65> for A98RgbLinear {
             -0.5650069742788596,  1.8759675015077206,  -0.11836239223101824,  0.0,
             -0.3447313507783295,  0.04155505740717561,  1.0151749943912054,   0.0,
              0.0,                 0.0,                  0.0,                  1.0,
+        );
+
+        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
+        Self::new(red, green, blue, value.alpha)
+    }
+}
+
+/// Model for a color in the ProPhoto RGB color space with gamma encoding.
+pub type ProPhotoRgb = Rgb<space::ProPhotoRgb, Gamma>;
+pub type ProPhotoRgbLinear = Rgb<space::ProPhotoRgb, Linear>;
+
+impl HasSpace for ProPhotoRgb {
+    const SPACE: Space = Space::ProPhotoRgb;
+}
+
+impl ProPhotoRgbLinear {
+    pub fn to_xyz_d50(&self) -> XyzD50 {
+        #[rustfmt::skip]
+        const TO_XYZ: Transform = Transform::new(
+            0.7977604896723027,  0.2880711282292934,     0.0,                0.0,
+            0.13518583717574031, 0.7118432178101014,     0.0,                0.0,
+            0.0313493495815248,  0.00008565396060525902, 0.8251046025104601, 0.0,
+            0.0,                 0.0,                    0.0,                1.0,
+        );
+
+        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
+        XyzD50::new(x, y, z, self.alpha)
+    }
+}
+
+impl From<XyzD50> for ProPhotoRgbLinear {
+    fn from(value: XyzD50) -> Self {
+        #[rustfmt::skip]
+        const FROM_XYZ: Transform = Transform::new(
+             1.3457989731028281,  -0.5446224939028347,  0.0,                0.0,
+            -0.25558010007997534,  1.5082327413132781,  0.0,                0.0,
+            -0.05110628506753401,  0.02053603239147973, 1.2119675456389454, 0.0,
+             0.0,                  0.0,                 0.0,                1.0,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
