@@ -29,9 +29,17 @@ mod math;
 mod rgb;
 mod xyz;
 
-pub use color::{Color, Component, ComponentDetails, Components, Flags, Space};
+pub use color::{Color, ComponentDetails, Components, Flags, Space};
 pub use hsl::Hsl;
 pub use hwb::Hwb;
 pub use lab::{Lab, Lch, Oklab, Oklch};
 pub use rgb::{DisplayP3, Srgb, SrgbLinear};
 pub use xyz::{XyzD50, XyzD65, D50, D65};
+
+#[cfg(not(feature = "f64"))]
+/// A 32-bit floating point value that all components are stored as.
+pub type Component = f32;
+
+#[cfg(feature = "f64")]
+/// A 64-bit floating point value that all components are stored as.
+pub type Component = f64;

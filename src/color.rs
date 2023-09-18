@@ -3,11 +3,7 @@
 
 use bitflags::bitflags;
 
-/// The type that each component of a color is stored as.
-///
-/// This allows switching to a more/less precise floating point type if
-/// required.
-pub type Component = f32;
+use crate::Component;
 
 /// Represent the three components that describe any color.
 #[derive(Clone, Copy, Debug, PartialEq)]

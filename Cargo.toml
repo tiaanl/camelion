@@ -3,6 +3,9 @@ name = "camelion"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+f64 = []
+
 [dependencies]
 bitflags = "2.4"
 euclid = "0.22"

@@ -172,6 +172,7 @@ impl HasSpace for Srgb {
 impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const FROM_XYZ: Transform = Transform::new(
              3.2409699419045213, -0.9692436362808798,  0.05563007969699361, 0.0,
             -1.5373831775700935,  1.8759675015077206, -0.20397695888897657, 0.0,
@@ -218,6 +219,7 @@ impl HasSpace for DisplayP3 {
 impl DisplayP3Linear {
     pub fn to_xyz_d65(&self) -> XyzD65 {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = Transform::new(
             0.48657094864821626, 0.22897456406974884, 0.0,                  0.0,
             0.26566769316909294, 0.6917385218365062,  0.045113381858902575, 0.0,
@@ -233,6 +235,7 @@ impl DisplayP3Linear {
 impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const FROM_XYZ: Transform = Transform::new(
              2.4934969119414245,  -0.829488969561575,    0.035845830243784335, 0.0,
             -0.9313836179191236,   1.7626640603183468,  -0.07617238926804171,  0.0,

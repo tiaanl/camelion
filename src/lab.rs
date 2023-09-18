@@ -179,6 +179,7 @@ pub type Oklab = RectangularOrthogonal<space::Oklab>;
 impl From<XyzD65> for Oklab {
     fn from(value: XyzD65) -> Self {
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const XYZ_TO_LMS: Transform = Transform::new(
              0.8190224432164319,  0.0329836671980271,  0.048177199566046255, 0.0,
              0.3619062562801221,  0.9292868468965546,  0.26423952494422764,  0.0,
@@ -187,6 +188,7 @@ impl From<XyzD65> for Oklab {
         );
 
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
         const LMS_TO_OKLAB: Transform = Transform::new(
              0.2104542553,  1.9779984951,  0.0259040371, 0.0,
              0.7936177850, -2.4285922050,  0.7827717662, 0.0,
