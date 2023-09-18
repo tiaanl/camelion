@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use crate::{
     color::{ComponentDetails, SpacePlaceholder},
     math::{transform, Transform},
-    xyz::WhitePoint,
-    Color, Component, Components, Flags, Space, XyzD50, XyzD65, D50,
+    xyz::{WhitePoint, Xyz},
+    Color, Component, Components, Flags, Space, ToXyz, XyzD50, XyzD65, D50, D65,
 };
 
 mod space {
@@ -124,6 +124,48 @@ impl<S: space::Space> CylindricalPolar<S> {
 /// The model for a color specified in the CIE-Lab color space with the rectangular orthogonal form.
 pub type Lab = RectangularOrthogonal<space::Lab>;
 
+impl ToXyz<D50> for Lab {
+    fn to_xyz(&self) -> Xyz<D50> {
+        const KAPPA: Component = 24389.0 / 27.0;
+        const EPSILON: Component = 216.0 / 24389.0;
+
+        // To avoid accessing the values through self all the time.
+        let (lightness, a, b) = (self.lightness, self.a, self.b);
+
+        let f1 = (lightness + 16.0) / 116.0;
+        let f0 = f1 + a / 500.0;
+        let f2 = f1 - b / 200.0;
+
+        let f0_cubed = f0 * f0 * f0;
+        let x = if f0_cubed > EPSILON {
+            f0_cubed
+        } else {
+            (116.0 * f0 - 16.0) / KAPPA
+        };
+
+        let y = if lightness > KAPPA * EPSILON {
+            let v = (lightness + 16.0) / 116.0;
+            v * v * v
+        } else {
+            lightness / KAPPA
+        };
+
+        let f2_cubed = f2 * f2 * f2;
+        let z = if f2_cubed > EPSILON {
+            f2_cubed
+        } else {
+            (116.0 * f2 - 16.0) / KAPPA
+        };
+
+        Xyz::new(
+            x * D50::WHITE_POINT.0,
+            y * D50::WHITE_POINT.1,
+            z * D50::WHITE_POINT.2,
+            self.alpha,
+        )
+    }
+}
+
 impl From<XyzD50> for Lab {
     fn from(value: XyzD50) -> Self {
         const KAPPA: Component = 24389.0 / 27.0;
@@ -200,6 +242,36 @@ impl From<XyzD65> for Oklab {
         let [x, y, z] = lms.map(|v| v.cbrt());
         let [lightness, a, b] = transform(&LMS_TO_OKLAB, x, y, z);
         Self::new(lightness, a, b, value.alpha)
+    }
+}
+
+impl ToXyz<D65> for Oklab {
+    fn to_xyz(&self) -> Xyz<D65> {
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const OKLAB_TO_LMS: Transform = Transform::new(
+            0.99999999845051981432,  1.0000000088817607767,    1.0000000546724109177,   0.0,
+            0.39633779217376785678, -0.1055613423236563494,   -0.089484182094965759684, 0.0,
+            0.21580375806075880339, -0.063854174771705903402, -1.2914855378640917399,   0.0,
+            0.0,                     0.0,                      0.0,                     1.0,
+        );
+
+        #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        const LMS_TO_XYZ: Transform = Transform::new(
+             1.2268798733741557,  -0.04057576262431372, -0.07637294974672142, 0.0,
+            -0.5578149965554813,   1.1122868293970594,  -0.4214933239627914,  0.0,
+             0.28139105017721583, -0.07171106666151701,  1.5869240244272418,  0.0,
+             0.0,                  0.0,                  0.0,                 1.0,
+        );
+
+        let [x, y, z] = transform(&OKLAB_TO_LMS, self.lightness, self.a, self.b);
+        let x = x * x * x;
+        let y = y * y * y;
+        let z = z * z * z;
+        let [x, y, z] = transform(&LMS_TO_XYZ, x, y, z);
+
+        Xyz::new(x, y, z, self.alpha)
     }
 }
 

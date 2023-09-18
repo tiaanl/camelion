@@ -27,7 +27,7 @@ impl WhitePoint for D65 {
 }
 
 /// Specify that a color model supports conversion to CIE-XYZ.
-pub trait ConvertToXyz<W: WhitePoint> {
+pub trait ToXyz<W: WhitePoint> {
     /// Convert this color to CIE-XYZ.
     fn to_xyz(&self) -> Xyz<W>;
 }

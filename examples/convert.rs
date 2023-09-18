@@ -1,4 +1,4 @@
-use camelion::{Lab, SrgbLinear};
+use camelion::{Lab, SrgbLinear, ToXyz};
 
 pub fn main() {
     let lab = Lab::new(
@@ -9,7 +9,7 @@ pub fn main() {
     );
 
     // 0.3373008675302083, 0.2454491947638009, 0.0319588705314679
-    let xyz_d50 = lab.to_xyz_d50();
+    let xyz_d50 = lab.to_xyz();
 
     // 0.31863421971306805, 0.23900587532696937, 0.041636956453517074
     let xyz_d65 = xyz_d50.to_xyz_d65();

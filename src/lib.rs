@@ -15,7 +15,7 @@
 //! - [`XyzD65`] for colors specified in the CIE-XYZ color space, with a D65 white reference.
 //! - [`DisplayP3`] for colors in the Display-P3 color space, specified with red, green and blue components.
 //! - [`A98Rgb`] for colors in the A98 color space, specified with red, green and blue components.
-//! - [`ProphotoRgb`] for colors in the ProPhoto RGB color space, specified with red, green and blue components.
+//! - [`ProPhotoRgb`] for colors in the ProPhoto RGB color space, specified with red, green and blue components.
 //! - [`Rec2020`] for colors in the rec2020 color space, specified with red, green and blue components.
 
 #![deny(missing_docs)]
@@ -34,7 +34,7 @@ pub use hsl::Hsl;
 pub use hwb::Hwb;
 pub use lab::{Lab, Lch, Oklab, Oklch};
 pub use rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
-pub use xyz::{XyzD50, XyzD65, D50, D65};
+pub use xyz::{ToXyz, XyzD50, XyzD65, D50, D65};
 
 #[cfg(not(feature = "f64"))]
 /// A 32-bit floating point value that all components are stored as.

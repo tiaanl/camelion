@@ -2,8 +2,8 @@
 
 use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::math::{transform, Transform};
-use crate::xyz::{ConvertToXyz, Xyz};
-use crate::{Color, Component, Components, Flags, Space, XyzD50, XyzD65, D65};
+use crate::xyz::{ToXyz, Xyz};
+use crate::{Color, Component, Components, Flags, Space, XyzD50, XyzD65, D50, D65};
 use std::marker::PhantomData;
 
 mod encoding {
@@ -274,7 +274,7 @@ impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
     }
 }
 
-impl ConvertToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
+impl ToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
@@ -305,8 +305,8 @@ impl HasSpace for DisplayP3 {
     const SPACE: Space = Space::DisplayP3;
 }
 
-impl DisplayP3Linear {
-    pub fn to_xyz_d65(&self) -> XyzD65 {
+impl ToXyz<D65> for DisplayP3Linear {
+    fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = Transform::new(
@@ -317,7 +317,7 @@ impl DisplayP3Linear {
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        XyzD65::new(x, y, z, self.alpha)
+        Xyz::new(x, y, z, self.alpha)
     }
 }
 
@@ -345,8 +345,8 @@ impl HasSpace for A98Rgb {
     const SPACE: Space = Space::A98Rgb;
 }
 
-impl A98RgbLinear {
-    pub fn to_xyz_d65(&self) -> XyzD65 {
+impl ToXyz<D65> for A98RgbLinear {
+    fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         const TO_XYZ: Transform = Transform::new(
             0.5766690429101308,  0.29734497525053616, 0.027031361386412378, 0.0,
@@ -383,8 +383,8 @@ impl HasSpace for ProPhotoRgb {
     const SPACE: Space = Space::ProPhotoRgb;
 }
 
-impl ProPhotoRgbLinear {
-    pub fn to_xyz_d50(&self) -> XyzD50 {
+impl ToXyz<D50> for ProPhotoRgbLinear {
+    fn to_xyz(&self) -> Xyz<D50> {
         #[rustfmt::skip]
         const TO_XYZ: Transform = Transform::new(
             0.7977604896723027,  0.2880711282292934,     0.0,                0.0,
@@ -421,8 +421,8 @@ impl HasSpace for Rec2020 {
     const SPACE: Space = Space::Rec2020;
 }
 
-impl Rec2020Linear {
-    pub fn to_xyz_d65(&self) -> XyzD65 {
+impl ToXyz<D65> for Rec2020Linear {
+    fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         const TO_XYZ: Transform = Transform::new(
             0.6369580483012913,  0.26270021201126703,  0.0,                  0.0,

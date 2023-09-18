@@ -3,9 +3,9 @@
 use crate::{
     math::{transform, Transform},
     rgb::{A98RgbLinear, DisplayP3Linear, ProPhotoRgbLinear, Rec2020Linear},
-    xyz::{ConvertToXyz, WhitePoint},
-    A98Rgb, Color, Component, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, ProPhotoRgb,
-    Rec2020, Space, Srgb, SrgbLinear, XyzD50, XyzD65, D50,
+    xyz::ToXyz,
+    A98Rgb, Color, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, ProPhotoRgb, Rec2020,
+    Space, Srgb, SrgbLinear, XyzD50, XyzD65,
 };
 
 impl Color {
@@ -55,37 +55,31 @@ impl Color {
                 .to_linear_light()
                 .to_xyz()
                 .to_xyz_d50(),
-            S::Lab => self.as_model::<Lab>().to_xyz_d50(),
-            S::Lch => self
-                .as_model::<Lch>()
-                .to_rectangular_orthogonal()
-                .to_xyz_d50(),
-            S::Oklab => self.as_model::<Oklab>().to_xyz_d65().to_xyz_d50(),
+            S::Lab => self.as_model::<Lab>().to_xyz(),
+            S::Lch => self.as_model::<Lch>().to_rectangular_orthogonal().to_xyz(),
+            S::Oklab => self.as_model::<Oklab>().to_xyz().to_xyz_d50(),
             S::Oklch => self
                 .as_model::<Oklch>()
                 .to_rectangular_orthogonal()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
             S::XyzD50 => (*self.as_model::<XyzD50>()).clone(),
             S::XyzD65 => self.as_model::<XyzD65>().to_xyz_d50(),
             S::DisplayP3 => self
                 .as_model::<DisplayP3>()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
             S::A98Rgb => self
                 .as_model::<A98Rgb>()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
-            S::ProPhotoRgb => self
-                .as_model::<ProPhotoRgb>()
-                .to_linear_light()
-                .to_xyz_d50(),
+            S::ProPhotoRgb => self.as_model::<ProPhotoRgb>().to_linear_light().to_xyz(),
             S::Rec2020 => self
                 .as_model::<Rec2020>()
                 .to_linear_light()
-                .to_xyz_d65()
+                .to_xyz()
                 .to_xyz_d50(),
         };
 
@@ -151,82 +145,6 @@ impl Hwb {
         let Components(red, green, blue) =
             util::hwb_to_rgb(&Components(self.hue, self.whiteness, self.blackness));
         Srgb::new(red, green, blue, self.alpha)
-    }
-}
-
-impl Lab {
-    /// Convert a CIELAB color to XYZ as specified in [1] and [2].
-    ///
-    /// [1]: https://drafts.csswg.org/css-color/#lab-to-predefined
-    /// [2]: https://drafts.csswg.org/css-color/#color-conversion-code
-    pub fn to_xyz_d50(&self) -> XyzD50 {
-        const KAPPA: Component = 24389.0 / 27.0;
-        const EPSILON: Component = 216.0 / 24389.0;
-
-        // To avoid accessing the values through self all the time.
-        let (lightness, a, b) = (self.lightness, self.a, self.b);
-
-        let f1 = (lightness + 16.0) / 116.0;
-        let f0 = f1 + a / 500.0;
-        let f2 = f1 - b / 200.0;
-
-        let f0_cubed = f0 * f0 * f0;
-        let x = if f0_cubed > EPSILON {
-            f0_cubed
-        } else {
-            (116.0 * f0 - 16.0) / KAPPA
-        };
-
-        let y = if lightness > KAPPA * EPSILON {
-            let v = (lightness + 16.0) / 116.0;
-            v * v * v
-        } else {
-            lightness / KAPPA
-        };
-
-        let f2_cubed = f2 * f2 * f2;
-        let z = if f2_cubed > EPSILON {
-            f2_cubed
-        } else {
-            (116.0 * f2 - 16.0) / KAPPA
-        };
-
-        XyzD50::new(
-            x * D50::WHITE_POINT.0,
-            y * D50::WHITE_POINT.1,
-            z * D50::WHITE_POINT.2,
-            self.alpha,
-        )
-    }
-}
-
-impl Oklab {
-    pub fn to_xyz_d65(&self) -> XyzD65 {
-        #[rustfmt::skip]
-        #[allow(clippy::excessive_precision)]
-        const OKLAB_TO_LMS: Transform = Transform::new(
-            0.99999999845051981432,  1.0000000088817607767,    1.0000000546724109177,   0.0,
-            0.39633779217376785678, -0.1055613423236563494,   -0.089484182094965759684, 0.0,
-            0.21580375806075880339, -0.063854174771705903402, -1.2914855378640917399,   0.0,
-            0.0,                     0.0,                      0.0,                     1.0,
-        );
-
-        #[rustfmt::skip]
-        #[allow(clippy::excessive_precision)]
-        const LMS_TO_XYZ: Transform = Transform::new(
-             1.2268798733741557,  -0.04057576262431372, -0.07637294974672142, 0.0,
-            -0.5578149965554813,   1.1122868293970594,  -0.4214933239627914,  0.0,
-             0.28139105017721583, -0.07171106666151701,  1.5869240244272418,  0.0,
-             0.0,                  0.0,                  0.0,                 1.0,
-        );
-
-        let [x, y, z] = transform(&OKLAB_TO_LMS, self.lightness, self.a, self.b);
-        let x = x * x * x;
-        let y = y * y * y;
-        let z = z * z * z;
-        let [x, y, z] = transform(&LMS_TO_XYZ, x, y, z);
-
-        XyzD65::new(x, y, z, self.alpha)
     }
 }
 
