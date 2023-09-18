@@ -79,8 +79,8 @@ pub trait HasSpace {
     const SPACE: Space;
 }
 
-#[derive(Clone, Debug)]
 /// Struct that can hold a color of any color space.
+#[derive(Clone, Debug)]
 pub struct Color {
     /// The three components that make up any color.
     pub components: Components,

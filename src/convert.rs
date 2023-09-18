@@ -3,7 +3,7 @@
 use crate::{
     math::{transform, Transform},
     rgb::{A98RgbLinear, DisplayP3Linear, ProPhotoRgbLinear, Rec2020Linear},
-    xyz::{white_point::WhitePoint, ConvertToXyz},
+    xyz::{ConvertToXyz, WhitePoint},
     A98Rgb, Color, Component, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, ProPhotoRgb,
     Rec2020, Space, Srgb, SrgbLinear, XyzD50, XyzD65, D50,
 };

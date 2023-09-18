@@ -4,40 +4,36 @@ use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
 use crate::{Color, Component, Components, Flags, Space};
 use std::marker::PhantomData;
 
-pub mod white_point {
-    use crate::Components;
+pub trait WhitePoint {
+    const WHITE_POINT: Components;
+}
 
-    pub trait WhitePoint {
-        const WHITE_POINT: Components;
-    }
+/// CIE-XYZ color with a D50 white point reference.
+#[derive(Clone, Debug)]
+pub struct D50;
 
-    /// CIE-XYZ color with a D50 white point reference.
-    #[derive(Clone, Debug)]
-    pub struct D50;
-    impl WhitePoint for D50 {
-        #[allow(clippy::excessive_precision)]
-        const WHITE_POINT: Components = Components(0.9642956764295677, 1.0, 0.8251046025104602);
-    }
+impl WhitePoint for D50 {
+    #[allow(clippy::excessive_precision)]
+    const WHITE_POINT: Components = Components(0.9642956764295677, 1.0, 0.8251046025104602);
+}
 
-    /// CIE-XYZ color with a D65 white point reference.
-    #[derive(Clone, Debug)]
-    pub struct D65;
-    impl WhitePoint for D65 {
-        #[allow(clippy::excessive_precision)]
-        const WHITE_POINT: Components = Components(0.9504559270516716, 1.0, 1.0890577507598784);
-    }
+/// CIE-XYZ color with a D65 white point reference.
+#[derive(Clone, Debug)]
+pub struct D65;
+
+impl WhitePoint for D65 {
+    #[allow(clippy::excessive_precision)]
+    const WHITE_POINT: Components = Components(0.9504559270516716, 1.0, 1.0890577507598784);
 }
 
 /// Specify that a color model supports conversion to CIE-XYZ.
-pub trait ConvertToXyz<W: white_point::WhitePoint> {
+pub trait ConvertToXyz<W: WhitePoint> {
     /// Convert this color to CIE-XYZ.
     fn to_xyz(&self) -> Xyz<W>;
 }
 
-pub use white_point::{D50, D65};
-
 #[derive(Clone, Debug)]
-pub struct Xyz<W: white_point::WhitePoint> {
+pub struct Xyz<W: WhitePoint> {
     pub x: Component,
     pub y: Component,
     pub z: Component,
@@ -48,7 +44,7 @@ pub struct Xyz<W: white_point::WhitePoint> {
     _w: PhantomData<W>,
 }
 
-impl<W: white_point::WhitePoint> Xyz<W> {
+impl<W: WhitePoint> Xyz<W> {
     pub fn new(
         x: impl Into<ComponentDetails>,
         y: impl Into<ComponentDetails>,
@@ -77,20 +73,20 @@ impl<W: white_point::WhitePoint> Xyz<W> {
 }
 
 /// Model for a color in the CIE-XYZ color space with a D50 white point.
-pub type XyzD50 = Xyz<white_point::D50>;
+pub type XyzD50 = Xyz<D50>;
 
 impl HasSpace for XyzD50 {
     const SPACE: Space = Space::XyzD50;
 }
 
 /// Model for a color in the CIE-XYZ color space with a D65 white point.
-pub type XyzD65 = Xyz<white_point::D65>;
+pub type XyzD65 = Xyz<D65>;
 
 impl HasSpace for XyzD65 {
     const SPACE: Space = Space::XyzD65;
 }
 
-impl<W: white_point::WhitePoint> From<Xyz<W>> for Color
+impl<W: WhitePoint> From<Xyz<W>> for Color
 where
     Xyz<W>: HasSpace,
 {

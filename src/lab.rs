@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::{
     color::{ComponentDetails, SpacePlaceholder},
     math::{transform, Transform},
-    xyz::white_point::WhitePoint,
+    xyz::WhitePoint,
     Color, Component, Components, Flags, Space, XyzD50, XyzD65, D50,
 };
 
