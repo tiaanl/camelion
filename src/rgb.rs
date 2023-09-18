@@ -27,8 +27,9 @@ mod encoding {
 }
 
 mod space {
-    use super::GammaConversion;
     use crate::{Component, Components};
+
+    use super::encoding::GammaConversion;
 
     /// This trait is used to identify tags that specify a color space/notation.
     pub trait Space {}
@@ -337,8 +338,8 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
 }
 
 /// Model for a color in the a98 RGB color space with gamma encoding.
-pub type A98Rgb = Rgb<space::A98Rgb, Gamma>;
-pub type A98RgbLinear = Rgb<space::A98Rgb, Linear>;
+pub type A98Rgb = Rgb<space::A98Rgb, encoding::GammaEncoded>;
+pub type A98RgbLinear = Rgb<space::A98Rgb, encoding::LinearLight>;
 
 impl HasSpace for A98Rgb {
     const SPACE: Space = Space::A98Rgb;
@@ -375,8 +376,8 @@ impl From<XyzD65> for A98RgbLinear {
 }
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
-pub type ProPhotoRgb = Rgb<space::ProPhotoRgb, Gamma>;
-pub type ProPhotoRgbLinear = Rgb<space::ProPhotoRgb, Linear>;
+pub type ProPhotoRgb = Rgb<space::ProPhotoRgb, encoding::GammaEncoded>;
+pub type ProPhotoRgbLinear = Rgb<space::ProPhotoRgb, encoding::LinearLight>;
 
 impl HasSpace for ProPhotoRgb {
     const SPACE: Space = Space::ProPhotoRgb;
@@ -413,8 +414,8 @@ impl From<XyzD50> for ProPhotoRgbLinear {
 }
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
-pub type Rec2020 = Rgb<space::Rec2020, Gamma>;
-pub type Rec2020Linear = Rgb<space::Rec2020, Linear>;
+pub type Rec2020 = Rgb<space::Rec2020, encoding::GammaEncoded>;
+pub type Rec2020Linear = Rgb<space::Rec2020, encoding::LinearLight>;
 
 impl HasSpace for Rec2020 {
     const SPACE: Space = Space::Rec2020;
