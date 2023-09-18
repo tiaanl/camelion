@@ -33,7 +33,7 @@ pub use color::{Color, ComponentDetails, Components, Flags, Space};
 pub use hsl::Hsl;
 pub use hwb::Hwb;
 pub use lab::{Lab, Lch, Oklab, Oklch};
-pub use rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Srgb, SrgbLinear};
+pub use rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
 pub use xyz::{XyzD50, XyzD65, D50, D65};
 
 #[cfg(not(feature = "f64"))]

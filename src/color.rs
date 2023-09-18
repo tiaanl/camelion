@@ -69,6 +69,8 @@ pub enum Space {
     A98Rgb,
     /// prophoto-rgb
     ProPhotoRgb,
+    /// rec2020
+    Rec2020,
 }
 
 pub type SpacePlaceholder = u8;

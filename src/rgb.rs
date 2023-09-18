@@ -132,6 +132,43 @@ mod space {
             })
         }
     }
+
+    /// Tag for the Rec2020 color space.
+    #[derive(Debug)]
+    pub struct Rec2020;
+
+    impl Rec2020 {
+        const ALPHA: Component = 1.09929682680944;
+        const BETA: Component = 0.018053968510807;
+    }
+
+    impl Space for Rec2020 {}
+
+    impl GammaConversion for Rec2020 {
+        fn to_gamma_encoded(from: &Components) -> Components {
+            from.map(|v| {
+                let abs = v.abs();
+
+                if abs > Self::BETA {
+                    v.signum() * (Self::ALPHA * abs.powf(0.45) - (Self::ALPHA - 1.0))
+                } else {
+                    4.5 * v
+                }
+            })
+        }
+
+        fn to_linear_light(from: &Components) -> Components {
+            from.map(|v| {
+                let abs = v.abs();
+
+                if abs < Self::BETA * 4.5 {
+                    v / 4.5
+                } else {
+                    v.signum() * ((abs + Self::ALPHA - 1.0) / Self::ALPHA).powf(1.0 / 0.45)
+                }
+            })
+        }
+    }
 }
 
 /// A color specified in the sRGB color space.
@@ -368,6 +405,44 @@ impl From<XyzD50> for ProPhotoRgbLinear {
             -0.25558010007997534,  1.5082327413132781,  0.0,                0.0,
             -0.05110628506753401,  0.02053603239147973, 1.2119675456389454, 0.0,
              0.0,                  0.0,                 0.0,                1.0,
+        );
+
+        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
+        Self::new(red, green, blue, value.alpha)
+    }
+}
+
+/// Model for a color in the ProPhoto RGB color space with gamma encoding.
+pub type Rec2020 = Rgb<space::Rec2020, Gamma>;
+pub type Rec2020Linear = Rgb<space::Rec2020, Linear>;
+
+impl HasSpace for Rec2020 {
+    const SPACE: Space = Space::Rec2020;
+}
+
+impl Rec2020Linear {
+    pub fn to_xyz_d65(&self) -> XyzD65 {
+        #[rustfmt::skip]
+        const TO_XYZ: Transform = Transform::new(
+            0.6369580483012913,  0.26270021201126703,  0.0,                  0.0,
+            0.14461690358620838, 0.677998071518871,    0.028072693049087508, 0.0,
+            0.16888097516417205, 0.059301716469861945, 1.0609850577107909,   0.0,
+            0.0,                 0.0,                  0.0,                  1.0,
+        );
+
+        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
+        XyzD65::new(x, y, z, self.alpha)
+    }
+}
+
+impl From<XyzD65> for Rec2020Linear {
+    fn from(value: XyzD65) -> Self {
+        #[rustfmt::skip]
+        const FROM_XYZ: Transform = Transform::new(
+             1.7166511879712676, -0.666684351832489,    0.017639857445310915, 0.0,
+            -0.3556707837763924,  1.616481236634939,   -0.042770613257808655, 0.0,
+            -0.2533662813736598,  0.01576854581391113,  0.942103121235474,    0.0,
+             0.0,                 0.0,                  0.0,                  1.0,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
