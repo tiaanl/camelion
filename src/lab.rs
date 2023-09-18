@@ -10,14 +10,17 @@ use crate::{
 mod space {
     pub trait Space {}
 
+    #[derive(Debug)]
     pub struct Lab;
     impl Space for Lab {}
 
+    #[derive(Debug)]
     pub struct Oklab;
     impl Space for Oklab {}
 }
 
 /// The model for a color specified in the rectangular orthogonal form.
+#[derive(Debug)]
 pub struct RectangularOrthogonal<S: space::Space> {
     pub lightness: Component,
     pub a: Component,
@@ -123,8 +126,8 @@ pub type Lab = RectangularOrthogonal<space::Lab>;
 
 impl From<XyzD50> for Lab {
     fn from(value: XyzD50) -> Self {
-        const KAPPA: f32 = 24389.0 / 27.0;
-        const EPSILON: f32 = 216.0 / 24389.0;
+        const KAPPA: Component = 24389.0 / 27.0;
+        const EPSILON: Component = 216.0 / 24389.0;
 
         let adapted = Components(
             value.x / D50::WHITE_POINT.0,

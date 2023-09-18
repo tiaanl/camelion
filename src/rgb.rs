@@ -12,9 +12,11 @@ mod encoding {
     /// This trait is used to identity tags that specify gamma encoding.
     pub trait Encoding {}
 
+    #[derive(Debug)]
     pub struct GammaEncoded;
     impl Encoding for GammaEncoded {}
 
+    #[derive(Debug)]
     pub struct LinearLight;
     impl Encoding for LinearLight {}
 
@@ -33,6 +35,7 @@ mod space {
     pub trait Space {}
 
     /// Tag for the sRGB color space.
+    #[derive(Debug)]
     pub struct Srgb;
 
     impl Space for Srgb {}
@@ -64,6 +67,7 @@ mod space {
     }
 
     /// Tag for the DisplayP3 color space.
+    #[derive(Debug)]
     pub struct DisplayP3;
 
     impl Space for DisplayP3 {}
@@ -80,6 +84,7 @@ mod space {
 }
 
 /// A color specified in the sRGB color space.
+#[derive(Debug)]
 pub struct Rgb<S: space::Space, E: encoding::Encoding> {
     /// The red component of the color.
     pub red: Component,
