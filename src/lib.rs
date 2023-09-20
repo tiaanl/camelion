@@ -24,6 +24,7 @@ mod color;
 mod convert;
 mod hsl;
 mod hwb;
+mod interpolate;
 mod lab;
 mod math;
 mod rgb;

@@ -9,3 +9,4 @@ f64 = []
 [dependencies]
 bitflags = "2.4"
 euclid = "0.22"
+num-traits = "*"
