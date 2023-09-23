@@ -2,7 +2,7 @@
 
 use crate::{
     color::HasSpace,
-    math::{transform, Transform},
+    math::{transform, transform_3x3, Transform},
     xyz::{ToXyz, Xyz},
     Color, Component, Components, Space, XyzD50, XyzD65, D50, D65,
 };
@@ -140,7 +140,9 @@ mod space {
     pub struct Rec2020;
 
     impl Rec2020 {
+        #[allow(clippy::excessive_precision)]
         const ALPHA: Component = 1.09929682680944;
+        #[allow(clippy::excessive_precision)]
         const BETA: Component = 0.018053968510807;
     }
 
@@ -226,11 +228,10 @@ impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
-        const FROM_XYZ: Transform = Transform::new(
-             3.2409699419045213, -0.9692436362808798,  0.05563007969699361, 0.0,
-            -1.5373831775700935,  1.8759675015077206, -0.20397695888897657, 0.0,
-            -0.4986107602930033,  0.04155505740717561, 1.0569715142428786,  0.0,
-             0.0,                 0.0,                 0.0,                 1.0,
+        const FROM_XYZ: Transform = transform_3x3(
+             3.2409699419045213, -0.9692436362808798,  0.05563007969699361,
+            -1.5373831775700935,  1.8759675015077206, -0.20397695888897657,
+            -0.4986107602930033,  0.04155505740717561, 1.0569715142428786,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
@@ -242,11 +243,10 @@ impl ToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
-        const TO_XYZ: Transform = Transform::new(
-            0.4123907992659595,  0.21263900587151036, 0.01933081871559185, 0.0,
-            0.35758433938387796, 0.7151686787677559,  0.11919477979462599, 0.0,
-            0.1804807884018343,  0.07219231536073371, 0.9505321522496606,  0.0,
-            0.0,                 0.0,                 0.0,                 1.0,
+        const TO_XYZ: Transform = transform_3x3(
+            0.4123907992659595,  0.21263900587151036, 0.01933081871559185,
+            0.35758433938387796, 0.7151686787677559,  0.11919477979462599,
+            0.1804807884018343,  0.07219231536073371, 0.9505321522496606,
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
@@ -273,11 +273,10 @@ impl ToXyz<D65> for DisplayP3Linear {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
-        const TO_XYZ: Transform = Transform::new(
-            0.48657094864821626, 0.22897456406974884, 0.0,                  0.0,
-            0.26566769316909294, 0.6917385218365062,  0.045113381858902575, 0.0,
-            0.1982172852343625,  0.079286914093745,   1.0439443689009757,   0.0,
-            0.0,                 0.0,                 0.0,                  1.0,
+        const TO_XYZ: Transform = transform_3x3(
+            0.48657094864821626, 0.22897456406974884, 0.0,
+            0.26566769316909294, 0.6917385218365062,  0.045113381858902575,
+            0.1982172852343625,  0.079286914093745,   1.0439443689009757,
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
@@ -289,11 +288,10 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
-        const FROM_XYZ: Transform = Transform::new(
-             2.4934969119414245,  -0.829488969561575,    0.035845830243784335, 0.0,
-            -0.9313836179191236,   1.7626640603183468,  -0.07617238926804171,  0.0,
-            -0.40271078445071684,  0.02362468584194359,  0.9568845240076873,   0.0,
-             0.0,                  0.0,                  0.0,                  1.0,
+        const FROM_XYZ: Transform = transform_3x3(
+             2.4934969119414245,  -0.829488969561575,    0.035845830243784335,
+            -0.9313836179191236,   1.7626640603183468,  -0.07617238926804171,
+            -0.40271078445071684,  0.02362468584194359,  0.9568845240076873,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
@@ -312,11 +310,11 @@ impl HasSpace for A98Rgb {
 impl ToXyz<D65> for A98RgbLinear {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
-        const TO_XYZ: Transform = Transform::new(
-            0.5766690429101308,  0.29734497525053616, 0.027031361386412378, 0.0,
-            0.18555823790654627, 0.627363566255466,   0.07068885253582714,  0.0,
-            0.18822864623499472, 0.07529145849399789, 0.9913375368376389,   0.0,
-            0.0,                 0.0,                 0.0,                  1.0,
+        #[allow(clippy::excessive_precision)]
+        const TO_XYZ: Transform = transform_3x3(
+            0.5766690429101308,  0.29734497525053616, 0.027031361386412378,
+            0.18555823790654627, 0.627363566255466,   0.07068885253582714,
+            0.18822864623499472, 0.07529145849399789, 0.9913375368376389,
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
@@ -327,11 +325,11 @@ impl ToXyz<D65> for A98RgbLinear {
 impl From<XyzD65> for A98RgbLinear {
     fn from(value: XyzD65) -> Self {
         #[rustfmt::skip]
-        const FROM_XYZ: Transform = Transform::new(
-             2.041587903810746,  -0.9692436362808798,   0.013444280632031024, 0.0,
-            -0.5650069742788596,  1.8759675015077206,  -0.11836239223101824,  0.0,
-            -0.3447313507783295,  0.04155505740717561,  1.0151749943912054,   0.0,
-             0.0,                 0.0,                  0.0,                  1.0,
+        #[allow(clippy::excessive_precision)]
+        const FROM_XYZ: Transform = transform_3x3(
+             2.041587903810746,  -0.9692436362808798,   0.013444280632031024,
+            -0.5650069742788596,  1.8759675015077206,  -0.11836239223101824,
+            -0.3447313507783295,  0.04155505740717561,  1.0151749943912054,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
@@ -350,11 +348,11 @@ impl HasSpace for ProPhotoRgb {
 impl ToXyz<D50> for ProPhotoRgbLinear {
     fn to_xyz(&self) -> Xyz<D50> {
         #[rustfmt::skip]
-        const TO_XYZ: Transform = Transform::new(
-            0.7977604896723027,  0.2880711282292934,     0.0,                0.0,
-            0.13518583717574031, 0.7118432178101014,     0.0,                0.0,
-            0.0313493495815248,  0.00008565396060525902, 0.8251046025104601, 0.0,
-            0.0,                 0.0,                    0.0,                1.0,
+        #[allow(clippy::excessive_precision)]
+        const TO_XYZ: Transform = transform_3x3(
+            0.7977604896723027,  0.2880711282292934,     0.0,
+            0.13518583717574031, 0.7118432178101014,     0.0,
+            0.0313493495815248,  0.00008565396060525902, 0.8251046025104601,
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
@@ -365,11 +363,11 @@ impl ToXyz<D50> for ProPhotoRgbLinear {
 impl From<XyzD50> for ProPhotoRgbLinear {
     fn from(value: XyzD50) -> Self {
         #[rustfmt::skip]
-        const FROM_XYZ: Transform = Transform::new(
-             1.3457989731028281,  -0.5446224939028347,  0.0,                0.0,
-            -0.25558010007997534,  1.5082327413132781,  0.0,                0.0,
-            -0.05110628506753401,  0.02053603239147973, 1.2119675456389454, 0.0,
-             0.0,                  0.0,                 0.0,                1.0,
+        #[allow(clippy::excessive_precision)]
+        const FROM_XYZ: Transform = transform_3x3(
+             1.3457989731028281,  -0.5446224939028347,  0.0,
+            -0.25558010007997534,  1.5082327413132781,  0.0,
+            -0.05110628506753401,  0.02053603239147973, 1.2119675456389454,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
@@ -388,11 +386,11 @@ impl HasSpace for Rec2020 {
 impl ToXyz<D65> for Rec2020Linear {
     fn to_xyz(&self) -> Xyz<D65> {
         #[rustfmt::skip]
-        const TO_XYZ: Transform = Transform::new(
-            0.6369580483012913,  0.26270021201126703,  0.0,                  0.0,
-            0.14461690358620838, 0.677998071518871,    0.028072693049087508, 0.0,
-            0.16888097516417205, 0.059301716469861945, 1.0609850577107909,   0.0,
-            0.0,                 0.0,                  0.0,                  1.0,
+        #[allow(clippy::excessive_precision)]
+        const TO_XYZ: Transform = transform_3x3(
+            0.6369580483012913,  0.26270021201126703,  0.0,
+            0.14461690358620838, 0.677998071518871,    0.028072693049087508,
+            0.16888097516417205, 0.059301716469861945, 1.0609850577107909,
         );
 
         let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
@@ -403,11 +401,11 @@ impl ToXyz<D65> for Rec2020Linear {
 impl From<XyzD65> for Rec2020Linear {
     fn from(value: XyzD65) -> Self {
         #[rustfmt::skip]
-        const FROM_XYZ: Transform = Transform::new(
-             1.7166511879712676, -0.666684351832489,    0.017639857445310915, 0.0,
-            -0.3556707837763924,  1.616481236634939,   -0.042770613257808655, 0.0,
-            -0.2533662813736598,  0.01576854581391113,  0.942103121235474,    0.0,
-             0.0,                 0.0,                  0.0,                  1.0,
+        #[allow(clippy::excessive_precision)]
+        const FROM_XYZ: Transform = transform_3x3(
+             1.7166511879712676, -0.666684351832489,    0.017639857445310915,
+            -0.3556707837763924,  1.616481236634939,   -0.042770613257808655,
+            -0.2533662813736598,  0.01576854581391113,  0.942103121235474,
         );
 
         let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
