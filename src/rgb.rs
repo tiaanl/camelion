@@ -1,10 +1,11 @@
 //! Model a color in the sRGB color space.
 
-use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
-use crate::math::{transform, Transform};
-use crate::xyz::{ToXyz, Xyz};
-use crate::{Color, Component, Components, Flags, Space, XyzD50, XyzD65, D50, D65};
-use std::marker::PhantomData;
+use crate::{
+    color::HasSpace,
+    math::{transform, Transform},
+    xyz::{ToXyz, Xyz},
+    Color, Component, Components, Space, XyzD50, XyzD65, D50, D65,
+};
 
 mod encoding {
     use crate::Components;
@@ -172,52 +173,15 @@ mod space {
     }
 }
 
-/// A color specified in the sRGB color space.
-#[derive(Debug)]
-pub struct Rgb<S: space::Space, E: encoding::Encoding> {
-    /// The red component of the color.
-    pub red: Component,
-    /// The green component of the color.
-    pub green: Component,
-    /// The blue component of the color.
-    pub blue: Component,
-    /// The alpha component of the color.
-    pub alpha: Component,
-    /// Holds any flags that might be enabled for this color.
-    pub flags: Flags,
-
-    _space: SpacePlaceholder,
-    _s: PhantomData<S>,
-    _e: PhantomData<E>,
-}
-
-impl<S: space::Space, E: encoding::Encoding> Rgb<S, E> {
-    /// Create a new color with RGB (red, green, blue) components.
-    pub fn new(
-        red: impl Into<ComponentDetails>,
-        green: impl Into<ComponentDetails>,
-        blue: impl Into<ComponentDetails>,
-        alpha: impl Into<ComponentDetails>,
-    ) -> Self {
-        let mut flags = Flags::empty();
-
-        let red = red.into().value_and_flag(&mut flags, Flags::C0_IS_NONE);
-        let green = green.into().value_and_flag(&mut flags, Flags::C1_IS_NONE);
-        let blue = blue.into().value_and_flag(&mut flags, Flags::C2_IS_NONE);
-        let alpha = alpha
-            .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
-
-        Self {
-            red,
-            green,
-            blue,
-            alpha,
-            flags,
-            _space: 0,
-            _s: PhantomData,
-            _e: PhantomData,
-        }
+camelion_macros::gen_model! {
+    /// A color specified in the sRGB color space.
+    pub struct Rgb<S: space::Space, E: encoding::Encoding> {
+        /// The red component of the color.
+        pub red: Component,
+        /// The green component of the color.
+        pub green: Component,
+        /// The blue component of the color.
+        pub blue: Component,
     }
 }
 

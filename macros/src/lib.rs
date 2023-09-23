@@ -1,4 +1,6 @@
+use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
 use syn::parse::Parser;
 
@@ -29,6 +31,17 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
         f.vis = syn::Visibility::Public(Default::default());
     });
 
+    // Add some derives.
+    // TODO: Check if the derives are already there.
+    let attr = syn::Attribute::parse_outer
+        .parse2(syn::parse_quote! {
+            #[derive(Clone, Debug)]
+        })
+        .unwrap();
+    input.attrs.extend(attr);
+
+    let mut phantom_fields: Vec<syn::Ident> = vec![];
+
     if let syn::Fields::Named(ref mut named) = input.fields {
         named.named.push(
             syn::Field::parse_named
@@ -56,12 +69,39 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
                 })
                 .unwrap(),
         );
+
+        // Phantom Fields.
+        input
+            .generics
+            .params
+            .iter()
+            .map(|g| {
+                if let syn::GenericParam::Type(type_param) = g {
+                    type_param.ident.clone()
+                } else {
+                    panic!("unsupported generic type")
+                }
+            })
+            .for_each(|ident| {
+                let field_name = format!("_{}", ident.to_string().to_case(Case::Snake));
+                let field_name = syn::Ident::new(field_name.as_str(), Span::call_site());
+                phantom_fields.push(field_name.clone());
+
+                named.named.push(
+                    syn::Field::parse_named
+                        .parse2(syn::parse_quote! {
+                            #field_name: std::marker::PhantomData<#ident>
+                        })
+                        .unwrap(),
+                );
+            });
     }
 
     let struct_name = input.ident.clone();
+    let (impl_gen, type_gen, _) = input.generics.split_for_impl();
 
     let new_impl = quote! {
-        impl #struct_name {
+        impl #impl_gen #struct_name #type_gen {
             /// Create a new color having this color space.
             pub fn new(
                 #field1: impl Into<crate::ComponentDetails>,
@@ -91,10 +131,13 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
                     alpha,
                     flags,
                     _space: Default::default(),
+                    #(#phantom_fields: std::marker::PhantomData,)*
                 }
             }
         }
     };
+
+    // TODO: Generate tests to check if the model has the same layout as Color.
 
     quote! {
         #input

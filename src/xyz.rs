@@ -1,8 +1,6 @@
 //! Model a color in the CIE-XYZ color space.
 
-use crate::color::{ComponentDetails, HasSpace, SpacePlaceholder};
-use crate::{Color, Component, Components, Flags, Space};
-use std::marker::PhantomData;
+use crate::{color::HasSpace, Color, Component, Components, Space};
 
 pub trait WhitePoint {
     const WHITE_POINT: Components;
@@ -32,43 +30,15 @@ pub trait ToXyz<W: WhitePoint> {
     fn to_xyz(&self) -> Xyz<W>;
 }
 
-#[derive(Clone, Debug)]
-pub struct Xyz<W: WhitePoint> {
-    pub x: Component,
-    pub y: Component,
-    pub z: Component,
-    pub alpha: Component,
-    pub flags: Flags,
-
-    _space: SpacePlaceholder,
-    _w: PhantomData<W>,
-}
-
-impl<W: WhitePoint> Xyz<W> {
-    pub fn new(
-        x: impl Into<ComponentDetails>,
-        y: impl Into<ComponentDetails>,
-        z: impl Into<ComponentDetails>,
-        alpha: impl Into<ComponentDetails>,
-    ) -> Self {
-        let mut flags = Flags::empty();
-
-        let x = x.into().value_and_flag(&mut flags, Flags::C0_IS_NONE);
-        let y = y.into().value_and_flag(&mut flags, Flags::C1_IS_NONE);
-        let z = z.into().value_and_flag(&mut flags, Flags::C2_IS_NONE);
-        let alpha = alpha
-            .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
-
-        Self {
-            x,
-            y,
-            z,
-            alpha,
-            flags,
-            _space: 0,
-            _w: PhantomData,
-        }
+camelion_macros::gen_model! {
+    /// A model for a color in the CIE-XYZ color space with a specified white point reference.
+    pub struct Xyz<W: WhitePoint> {
+        /// The X component of the color.
+        pub x: Component,
+        /// The Y component of the color.
+        pub y: Component,
+        /// The Z component of the color.
+        pub z: Component,
     }
 }
 

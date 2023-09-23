@@ -1,10 +1,7 @@
-use std::marker::PhantomData;
-
 use crate::{
-    color::{ComponentDetails, SpacePlaceholder},
     math::{transform, Transform},
     xyz::{WhitePoint, Xyz},
-    Color, Component, Components, Flags, Space, ToXyz, XyzD50, XyzD65, D50, D65,
+    Color, Component, Components, Space, ToXyz, XyzD50, XyzD65, D50, D65,
 };
 
 mod space {
@@ -19,49 +16,19 @@ mod space {
     impl Space for Oklab {}
 }
 
-/// The model for a color specified in the rectangular orthogonal form.
-#[derive(Debug)]
-pub struct Rectangular<S: space::Space> {
-    pub lightness: Component,
-    pub a: Component,
-    pub b: Component,
-    pub alpha: Component,
-    pub flags: Flags,
-
-    _space: SpacePlaceholder,
-    _s: PhantomData<S>,
+camelion_macros::gen_model! {
+    /// The model for a color specified in the rectangular orthogonal form.
+    pub struct Rectangular<S: space::Space> {
+        /// The lightness component.
+        pub lightness: Component,
+        /// The a component.
+        pub a: Component,
+        /// The b component.
+        pub b: Component,
+    }
 }
 
 impl<S: space::Space> Rectangular<S> {
-    /// Create a new color with a rectangular orthogonal form.
-    pub fn new(
-        lightness: impl Into<ComponentDetails>,
-        a: impl Into<ComponentDetails>,
-        b: impl Into<ComponentDetails>,
-        alpha: impl Into<ComponentDetails>,
-    ) -> Self {
-        let mut flags = Flags::empty();
-
-        let lightness = lightness
-            .into()
-            .value_and_flag(&mut flags, Flags::C0_IS_NONE);
-        let a = a.into().value_and_flag(&mut flags, Flags::C1_IS_NONE);
-        let b = b.into().value_and_flag(&mut flags, Flags::C2_IS_NONE);
-        let alpha = alpha
-            .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
-
-        Self {
-            lightness,
-            a,
-            b,
-            alpha,
-            flags,
-            _space: 0,
-            _s: PhantomData,
-        }
-    }
-
     pub fn to_polar(&self) -> Polar<S> {
         let hue = self.b.atan2(self.a).to_degrees().rem_euclid(360.0);
         let chroma = (self.a * self.a + self.b * self.b).sqrt();
@@ -70,48 +37,16 @@ impl<S: space::Space> Rectangular<S> {
     }
 }
 
-/// The model for a color specified in the cylindrical polar form.
-pub struct Polar<S: space::Space> {
-    pub lightness: Component,
-    pub chroma: Component,
-    pub hue: Component,
-    pub alpha: Component,
-    pub flags: Flags,
-
-    _space: SpacePlaceholder,
-    _s: PhantomData<S>,
+camelion_macros::gen_model! {
+    /// The model for a color specified in the cylindrical polar form.
+    pub struct Polar<S: space::Space> {
+        pub lightness: Component,
+        pub chroma: Component,
+        pub hue: Component,
+    }
 }
 
 impl<S: space::Space> Polar<S> {
-    /// Create a new color with the cylindrical polar form.
-    pub fn new(
-        lightness: impl Into<ComponentDetails>,
-        chroma: impl Into<ComponentDetails>,
-        hue: impl Into<ComponentDetails>,
-        alpha: impl Into<ComponentDetails>,
-    ) -> Self {
-        let mut flags = Flags::empty();
-
-        let lightness = lightness
-            .into()
-            .value_and_flag(&mut flags, Flags::C0_IS_NONE);
-        let chroma = chroma.into().value_and_flag(&mut flags, Flags::C1_IS_NONE);
-        let hue = hue.into().value_and_flag(&mut flags, Flags::C2_IS_NONE);
-        let alpha = alpha
-            .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
-
-        Self {
-            lightness,
-            chroma,
-            hue,
-            alpha,
-            flags,
-            _space: 0,
-            _s: PhantomData,
-        }
-    }
-
     pub fn to_rectangular(&self) -> Rectangular<S> {
         let hue = self.hue.to_radians();
         let a = self.chroma * hue.cos();
