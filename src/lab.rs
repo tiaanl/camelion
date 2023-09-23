@@ -21,7 +21,7 @@ mod space {
 
 /// The model for a color specified in the rectangular orthogonal form.
 #[derive(Debug)]
-pub struct RectangularOrthogonal<S: space::Space> {
+pub struct Rectangular<S: space::Space> {
     pub lightness: Component,
     pub a: Component,
     pub b: Component,
@@ -32,8 +32,8 @@ pub struct RectangularOrthogonal<S: space::Space> {
     _s: PhantomData<S>,
 }
 
-impl<S: space::Space> RectangularOrthogonal<S> {
-    /// Create a new color in the rectangular orthogonal form.
+impl<S: space::Space> Rectangular<S> {
+    /// Create a new color with a rectangular orthogonal form.
     pub fn new(
         lightness: impl Into<ComponentDetails>,
         a: impl Into<ComponentDetails>,
@@ -62,16 +62,16 @@ impl<S: space::Space> RectangularOrthogonal<S> {
         }
     }
 
-    pub fn to_cylindrical_polar(&self) -> CylindricalPolar<S> {
+    pub fn to_polar(&self) -> Polar<S> {
         let hue = self.b.atan2(self.a).to_degrees().rem_euclid(360.0);
         let chroma = (self.a * self.a + self.b * self.b).sqrt();
 
-        CylindricalPolar::new(self.lightness, chroma, hue, self.alpha)
+        Polar::new(self.lightness, chroma, hue, self.alpha)
     }
 }
 
 /// The model for a color specified in the cylindrical polar form.
-pub struct CylindricalPolar<S: space::Space> {
+pub struct Polar<S: space::Space> {
     pub lightness: Component,
     pub chroma: Component,
     pub hue: Component,
@@ -82,7 +82,7 @@ pub struct CylindricalPolar<S: space::Space> {
     _s: PhantomData<S>,
 }
 
-impl<S: space::Space> CylindricalPolar<S> {
+impl<S: space::Space> Polar<S> {
     /// Create a new color with the cylindrical polar form.
     pub fn new(
         lightness: impl Into<ComponentDetails>,
@@ -112,17 +112,17 @@ impl<S: space::Space> CylindricalPolar<S> {
         }
     }
 
-    pub fn to_rectangular_orthogonal(&self) -> RectangularOrthogonal<S> {
+    pub fn to_rectangular(&self) -> Rectangular<S> {
         let hue = self.hue.to_radians();
         let a = self.chroma * hue.cos();
         let b = self.chroma * hue.sin();
 
-        RectangularOrthogonal::new(self.lightness, a, b, self.alpha)
+        Rectangular::new(self.lightness, a, b, self.alpha)
     }
 }
 
 /// The model for a color specified in the CIE-Lab color space with the rectangular orthogonal form.
-pub type Lab = RectangularOrthogonal<space::Lab>;
+pub type Lab = Rectangular<space::Lab>;
 
 impl ToXyz<D50> for Lab {
     fn to_xyz(&self) -> Xyz<D50> {
@@ -201,7 +201,7 @@ impl From<Lab> for Color {
 }
 
 /// The model for a color specified in the CIE-Lab color space with the cylindrical polar form.
-pub type Lch = CylindricalPolar<space::Lab>;
+pub type Lch = Polar<space::Lab>;
 
 impl From<Lch> for Color {
     fn from(value: Lch) -> Self {
@@ -216,7 +216,7 @@ impl From<Lch> for Color {
 }
 
 /// The model for a color specified in the oklab color space with the rectangular orthogonal form.
-pub type Oklab = RectangularOrthogonal<space::Oklab>;
+pub type Oklab = Rectangular<space::Oklab>;
 
 impl From<XyzD65> for Oklab {
     fn from(value: XyzD65) -> Self {
@@ -282,7 +282,7 @@ impl From<Oklab> for Color {
 }
 
 /// The model for a color specified in the oklab color space with the cylindrical polar form.
-pub type Oklch = CylindricalPolar<space::Oklab>;
+pub type Oklch = Polar<space::Oklab>;
 
 impl From<Oklch> for Color {
     fn from(value: Oklch) -> Self {

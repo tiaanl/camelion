@@ -56,11 +56,11 @@ impl Color {
                 .to_xyz()
                 .to_xyz_d50(),
             S::Lab => self.as_model::<Lab>().to_xyz(),
-            S::Lch => self.as_model::<Lch>().to_rectangular_orthogonal().to_xyz(),
+            S::Lch => self.as_model::<Lch>().to_rectangular().to_xyz(),
             S::Oklab => self.as_model::<Oklab>().to_xyz().to_xyz_d50(),
             S::Oklch => self
                 .as_model::<Oklch>()
-                .to_rectangular_orthogonal()
+                .to_rectangular()
                 .to_xyz()
                 .to_xyz_d50(),
             S::XyzD50 => (*self.as_model::<XyzD50>()).clone(),
@@ -95,9 +95,9 @@ impl Color {
                 .to_hwb()
                 .into(),
             S::Lab => Lab::from(xyz).into(),
-            S::Lch => Lab::from(xyz).to_cylindrical_polar().into(),
+            S::Lch => Lab::from(xyz).to_polar().into(),
             S::Oklab => Oklab::from(xyz.to_xyz_d65()).into(),
-            S::Oklch => Oklab::from(xyz.to_xyz_d65()).to_cylindrical_polar().into(),
+            S::Oklch => Oklab::from(xyz.to_xyz_d65()).to_polar().into(),
             S::DisplayP3 => DisplayP3Linear::from(xyz.to_xyz_d65())
                 .to_gamma_encoded()
                 .into(),
