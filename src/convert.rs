@@ -298,6 +298,8 @@ mod tests {
         use Space as S;
 
         #[rustfmt::skip]
+        #[allow(clippy::excessive_precision)]
+        #[allow(clippy::type_complexity)]
         const TESTS: &[(Space, Component, Component, Component, Space, Component, Component, Component)] = &[
             (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941),
             (S::Srgb, 0.8235294117647058, 0.4117647058823529, 0.11764705882352941, S::Hsl, 24.999999999999996, 0.7499999999999999, 0.4705882352941176),

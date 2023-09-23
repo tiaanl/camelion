@@ -190,7 +190,7 @@ impl Space {
 
     /// Returns the index of a hue component, otherwise None if the color does
     /// not have a hue component.
-    fn hue_index(&self) -> Option<usize> {
+    fn _hue_index(&self) -> Option<usize> {
         match self {
             Space::Hsl => Some(0),
             Space::Hwb => Some(0),

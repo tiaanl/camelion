@@ -99,3 +99,28 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Color, Space, XyzD50};
+
+    #[test]
+    fn as_model() {
+        let color = Color::new(Space::XyzD50, 0.1, 0.2, 0.3, 0.4);
+
+        let model = color.as_model::<XyzD50>().clone();
+        assert_eq!(model.x, color.components.0);
+        assert_eq!(model.y, color.components.1);
+        assert_eq!(model.z, color.components.2);
+        assert_eq!(model.alpha, color.alpha);
+        assert_eq!(model.flags, color.flags);
+
+        let back = Color::from(model);
+        assert_eq!(back.components.0, color.components.0);
+        assert_eq!(back.components.1, color.components.1);
+        assert_eq!(back.components.2, color.components.2);
+        assert_eq!(back.alpha, color.alpha);
+        assert_eq!(back.flags, color.flags);
+        assert_eq!(back.space, Space::XyzD50);
+    }
+}

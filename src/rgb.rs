@@ -450,3 +450,19 @@ impl From<XyzD65> for Rec2020Linear {
         Self::new(red, green, blue, value.alpha)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{Color, DisplayP3, Space};
+
+    #[test]
+    fn as_model() {
+        let color = Color::new(Space::DisplayP3, 0.1, 0.2, 0.3, 0.4);
+        let model = color.as_model::<DisplayP3>();
+        assert_eq!(model.red, color.components.0);
+        assert_eq!(model.green, color.components.1);
+        assert_eq!(model.blue, color.components.2);
+        assert_eq!(model.alpha, color.alpha);
+        assert_eq!(model.flags, color.flags);
+    }
+}
