@@ -1,54 +1,21 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::color::{ComponentDetails, SpacePlaceholder};
-use crate::{Color, Component, Components, Flags, Space};
+use crate::{color::HasSpace, Color, Component, Components, Space};
 
-/// A color specified with the HSL notation in the sRGB color space.
-#[derive(Debug, PartialEq)]
-pub struct Hsl {
-    /// The hue component of the color.
-    pub hue: Component,
-    /// The saturation component of the color.
-    pub saturation: Component,
-    /// The lightness component of the color.
-    pub lightness: Component,
-    /// The alpha component of the color.
-    pub alpha: Component,
-    /// Holds any flags that might be enabled for this color.
-    pub flags: Flags,
-    _space: SpacePlaceholder,
+camelion_macros::gen_model! {
+    /// A color specified with the HSL notation in the sRGB color space.
+    pub struct Hsl {
+        /// The hue component of the color.
+        pub hue: Component,
+        /// The saturation component of the color.
+        saturation: Component,
+        /// The lightness component of the color.
+        lightness: Component,
+    }
 }
 
-impl Hsl {
-    /// Create a new color with RGB (red, green, blue) components.
-    pub fn new(
-        hue: impl Into<ComponentDetails>,
-        saturation: impl Into<ComponentDetails>,
-        lightness: impl Into<ComponentDetails>,
-        alpha: impl Into<ComponentDetails>,
-    ) -> Self {
-        let mut flags = Flags::empty();
-
-        let hue = hue.into().value_and_flag(&mut flags, Flags::C0_IS_NONE);
-        let saturation = saturation
-            .into()
-            .value_and_flag(&mut flags, Flags::C1_IS_NONE);
-        let lightness = lightness
-            .into()
-            .value_and_flag(&mut flags, Flags::C2_IS_NONE);
-        let alpha = alpha
-            .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
-
-        Self {
-            hue,
-            saturation,
-            lightness,
-            alpha,
-            flags,
-            _space: 0,
-        }
-    }
+impl HasSpace for Hsl {
+    const SPACE: Space = Space::Hsl;
 }
 
 impl From<Hsl> for Color {
@@ -57,7 +24,7 @@ impl From<Hsl> for Color {
             components: Components(value.hue, value.saturation, value.lightness),
             alpha: value.alpha,
             flags: value.flags,
-            space: Space::Hsl,
+            space: Hsl::SPACE,
         }
     }
 }
@@ -76,4 +43,16 @@ mod tests {
         assert_eq!(model.alpha, color.alpha);
         assert_eq!(model.flags, color.flags);
     }
+
+    // #[test]
+    // fn p() {
+    //     let _hsl2 = super::Hsl2 {
+    //         hue: 0.0,
+    //         saturation: 0.0,
+    //         lightness: 0.0,
+    //         alpha: 0.0,
+    //         flags: Flags::empty(),
+    //         _space: Default::default(),
+    //     };
+    // }
 }

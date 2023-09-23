@@ -10,3 +10,4 @@ f64 = []
 bitflags = "2.4"
 euclid = "0.22"
 num-traits = "*"
+camelion-macros = { path = "macros" }
