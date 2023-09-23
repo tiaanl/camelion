@@ -80,6 +80,128 @@ impl<Typed> Interpolation<Typed> {
     }
 }
 
+impl Space {
+    /// Returns true if the color space uses red, green and blue components.
+    fn is_rgb_like(&self) -> bool {
+        match self {
+            Space::Srgb
+            | Space::SrgbLinear
+            | Space::DisplayP3
+            | Space::A98Rgb
+            | Space::ProPhotoRgb
+            | Space::Rec2020 => true,
+            Space::Hsl
+            | Space::Hwb
+            | Space::Lab
+            | Space::Lch
+            | Space::Oklab
+            | Space::Oklch
+            | Space::XyzD50
+            | Space::XyzD65 => false,
+        }
+    }
+
+    /// Returns true if the color space uses X, Y and Z components. Typically
+    /// used by the CIE-XYZ color space.
+    fn is_xyz_like(&self) -> bool {
+        match self {
+            Space::XyzD50 | Space::XyzD65 => true,
+            Space::Srgb
+            | Space::SrgbLinear
+            | Space::Hsl
+            | Space::Hwb
+            | Space::Lab
+            | Space::Lch
+            | Space::Oklab
+            | Space::Oklch
+            | Space::DisplayP3
+            | Space::A98Rgb
+            | Space::ProPhotoRgb
+            | Space::Rec2020 => false,
+        }
+    }
+
+    /// Returns the index of a hue component, otherwise None if the color does
+    /// not have a hue component.
+    fn hue_index(&self) -> Option<usize> {
+        match self {
+            Space::Hsl => Some(0),
+            Space::Hwb => Some(0),
+            Space::Lch => Some(2),
+            Space::Oklch => Some(2),
+            Space::Srgb
+            | Space::SrgbLinear
+            | Space::Lab
+            | Space::Oklab
+            | Space::XyzD50
+            | Space::XyzD65
+            | Space::DisplayP3
+            | Space::A98Rgb
+            | Space::ProPhotoRgb
+            | Space::Rec2020 => None,
+        }
+    }
+}
+
+fn analogous_missing_components(from: Space, to: Space, flags: Flags) -> Flags {
+    if from == to {
+        return flags;
+    }
+
+    // Reds             r, x
+    // Greens           g, y
+    // Blues            b, z
+    if (from.is_rgb_like() || from.is_xyz_like()) && (from.is_rgb_like() || to.is_xyz_like()) {
+        return flags;
+    }
+
+    let mut result = Flags::empty();
+
+    // Lightness        L
+    if matches!(from, Space::Lab | Space::Lch | Space::Oklab | Space::Oklch) {
+        if matches!(to, Space::Lab | Space::Lch | Space::Oklab | Space::Oklch) {
+            result.set(Flags::C0_IS_NONE, flags.contains(Flags::C0_IS_NONE));
+        } else if matches!(to, Space::Hsl) {
+            result.set(Flags::C2_IS_NONE, flags.contains(Flags::C0_IS_NONE));
+        }
+    } else if matches!(from, Space::Hsl)
+        && matches!(to, Space::Lab | Space::Lch | Space::Oklab | Space::Oklch)
+    {
+        result.set(Flags::C0_IS_NONE, flags.contains(Flags::C2_IS_NONE));
+    }
+
+    // Colorfulness     C, S
+    if matches!(from, Space::Hsl | Space::Lch | Space::Oklch)
+        && matches!(to, Space::Hsl | Space::Lch | Space::Oklch)
+    {
+        result.set(Flags::C1_IS_NONE, flags.contains(Flags::C1_IS_NONE));
+    }
+
+    // Hue              H
+    if matches!(from, Space::Hsl | Space::Hwb) {
+        if matches!(to, Space::Hsl | Space::Hwb) {
+            result.set(Flags::C0_IS_NONE, flags.contains(Flags::C0_IS_NONE));
+        } else if matches!(to, Space::Lch | Space::Oklch) {
+            result.set(Flags::C2_IS_NONE, flags.contains(Flags::C0_IS_NONE));
+        }
+    } else if matches!(from, Space::Lch | Space::Oklch) {
+        if matches!(to, Space::Hsl | Space::Hwb) {
+            result.set(Flags::C0_IS_NONE, flags.contains(Flags::C2_IS_NONE));
+        } else if matches!(to, Space::Lch | Space::Oklch) {
+            result.set(Flags::C2_IS_NONE, flags.contains(Flags::C2_IS_NONE));
+        }
+    }
+
+    // Opponent         a, a
+    // Opponent         b, b
+    if matches!(from, Space::Lab | Space::Oklab) && matches!(to, Space::Lab | Space::Oklab) {
+        result.set(Flags::C1_IS_NONE, flags.contains(Flags::C1_IS_NONE));
+        result.set(Flags::C2_IS_NONE, flags.contains(Flags::C2_IS_NONE));
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,5 +230,87 @@ mod tests {
         assert_component_eq!(middle.components.2, 0.5);
         assert_component_eq!(middle.alpha, 1.0);
         assert_eq!(middle.space, Space::Srgb);
+    }
+
+    #[test]
+    fn test_analogous_missing_components() {
+        use Flags as F;
+        use Space as S;
+
+        #[rustfmt::skip]
+        let tests = [
+            // Reds             r, x
+            // Greens           g, y
+            // Blues            b, z
+            (S::Srgb, S::DisplayP3, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Srgb, S::DisplayP3, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Srgb, S::DisplayP3, F::C2_IS_NONE, F::C2_IS_NONE),
+            (S::Srgb, S::DisplayP3, F::ALPHA_IS_NONE, F::ALPHA_IS_NONE),
+            (S::Srgb, S::DisplayP3, F::C0_IS_NONE | F::C1_IS_NONE | F::C2_IS_NONE | F::ALPHA_IS_NONE,
+                                    F::C0_IS_NONE | F::C1_IS_NONE | F::C2_IS_NONE | F::ALPHA_IS_NONE),
+
+            // Lightness        L
+            (S::Lab, S::Lab, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Lab, S::Lch, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Lch, S::Lch, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Lch, S::Lab, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Lab, S::Hsl, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Lch, S::Hsl, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Hsl, S::Lab, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Hsl, S::Lch, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Oklab, S::Oklab, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Oklab, S::Oklch, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Oklch, S::Oklch, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Oklch, S::Oklab, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Oklab, S::Hsl, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Oklch, S::Hsl, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Hsl, S::Oklab, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Hsl, S::Oklch, F::C2_IS_NONE, F::C0_IS_NONE),
+
+            // Colorfulness     C, S
+            (S::Hsl, S::Hsl, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Hsl, S::Lch, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Hsl, S::Oklch, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Lch, S::Hsl, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Lch, S::Lch, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Lch, S::Oklch, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Oklch, S::Hsl, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Oklch, S::Lch, F::C1_IS_NONE, F::C1_IS_NONE),
+            (S::Oklch, S::Oklch, F::C1_IS_NONE, F::C1_IS_NONE),
+
+            // Hue              H
+            (S::Hsl, S::Hsl, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Hsl, S::Hwb, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Hsl, S::Lch, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Hsl, S::Oklch, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Hwb, S::Hsl, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Hwb, S::Hwb, F::C0_IS_NONE, F::C0_IS_NONE),
+            (S::Hwb, S::Lch, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Hwb, S::Oklch, F::C0_IS_NONE, F::C2_IS_NONE),
+            (S::Lch, S::Hsl, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Lch, S::Hwb, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Lch, S::Lch, F::C2_IS_NONE, F::C2_IS_NONE),
+            (S::Lch, S::Oklch, F::C2_IS_NONE, F::C2_IS_NONE),
+            (S::Oklch, S::Hsl, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Oklch, S::Hwb, F::C2_IS_NONE, F::C0_IS_NONE),
+            (S::Oklch, S::Lch, F::C2_IS_NONE, F::C2_IS_NONE),
+            (S::Oklch, S::Oklch, F::C2_IS_NONE, F::C2_IS_NONE),
+
+            // Opponent         a, a
+            // Opponent         b, b
+            (S::Lab, S::Lab, F::C1_IS_NONE | F::C2_IS_NONE, F::C1_IS_NONE | F::C2_IS_NONE),
+            (S::Lab, S::Oklab, F::C1_IS_NONE | F::C2_IS_NONE, F::C1_IS_NONE | F::C2_IS_NONE),
+            (S::Oklab, S::Lab, F::C1_IS_NONE | F::C2_IS_NONE, F::C1_IS_NONE | F::C2_IS_NONE),
+            (S::Oklab, S::Oklab, F::C1_IS_NONE | F::C2_IS_NONE, F::C1_IS_NONE | F::C2_IS_NONE),
+        ];
+
+        for (from, to, flags, expected) in tests {
+            let result = analogous_missing_components(from, to, flags);
+            assert_eq!(
+                result, expected,
+                "{:?} to {:?}, {:?} != {:?}",
+                from, to, result, expected
+            );
+        }
     }
 }
