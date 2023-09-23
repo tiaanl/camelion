@@ -67,14 +67,81 @@ impl Interpolation<()> {
 
 impl<Typed> Interpolation<Typed> {
     pub fn at(&self, t: Component) -> Color {
+        macro_rules! component {
+            ($color:expr,$i:tt,$flag:ident) => {{
+                if $color.flags.contains(Flags::$flag) {
+                    None
+                } else {
+                    Some($color.components.$i)
+                }
+            }};
+        }
+
+        let left_flags = analogous_missing_components(self.left.space, self.space, self.left.flags);
+        let mut left = self.left.to_space(self.space);
+        left.flags = left_flags;
+
+        let left = [
+            component!(left, 0, C0_IS_NONE),
+            component!(left, 1, C1_IS_NONE),
+            component!(left, 2, C2_IS_NONE),
+        ];
+
+        let right_flags =
+            analogous_missing_components(self.right.space, self.space, self.right.flags);
+        let mut right = self.right.to_space(self.space);
+        right.flags = right_flags;
+
+        let right = [
+            component!(right, 0, C0_IS_NONE),
+            component!(right, 1, C1_IS_NONE),
+            component!(right, 2, C2_IS_NONE),
+        ];
+
+        let mut result = Components(0.0, 0.0, 0.0);
+        let mut result_flags = Flags::empty();
+
+        for i in 0..3 {
+            let value = match (left[i], right[i]) {
+                (None, None) => None,
+                (None, Some(right)) => Some(right),
+                (Some(left), None) => Some(left),
+                (Some(left), Some(right)) => Some(lerp(left, right, t)),
+            };
+
+            match i {
+                0 => {
+                    result.0 = if let Some(value) = value {
+                        value
+                    } else {
+                        result_flags.set(Flags::C0_IS_NONE, true);
+                        Component::NAN
+                    }
+                }
+                1 => {
+                    result.1 = if let Some(value) = value {
+                        value
+                    } else {
+                        result_flags.set(Flags::C1_IS_NONE, true);
+                        Component::NAN
+                    }
+                }
+                2 => {
+                    result.2 = if let Some(value) = value {
+                        value
+                    } else {
+                        result_flags.set(Flags::C2_IS_NONE, true);
+                        Component::NAN
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
         Color {
-            components: Components(
-                lerp(self.left.components.0, self.right.components.0, t),
-                lerp(self.left.components.1, self.right.components.1, t),
-                lerp(self.left.components.2, self.right.components.2, t),
-            ),
+            components: result,
             alpha: lerp(self.left.alpha, self.right.alpha, t),
-            flags: Flags::empty(),
+            flags: result_flags,
             space: self.space,
         }
     }
@@ -208,7 +275,12 @@ mod tests {
 
     macro_rules! assert_component_eq {
         ($actual:expr,$expected:expr) => {{
-            assert!(($actual - $expected).abs() <= Component::EPSILON * 1e3)
+            assert!(
+                ($actual - $expected).abs() <= Component::EPSILON * 1e3,
+                "{} != {}",
+                $actual,
+                $expected
+            )
         }};
     }
 
