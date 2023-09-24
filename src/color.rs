@@ -39,38 +39,38 @@ bitflags! {
 pub enum Space {
     /// The sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#numeric-srgb>
-    Srgb,
-    /// The sRGB color space with no gamma mapping.
-    /// <https://drafts.csswg.org/css-color-4/#predefined-sRGB-linear>
-    SrgbLinear,
+    Srgb = 0,
     /// The HSL (hue, saturation, lightness) notation is used as an improved
     /// method of representing colors in the sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
-    Hsl,
+    Hsl = 1,
     /// The HWB (hue, whiteness, blackness) notation is used as an improved
     /// method of specifying colors in the sRGB color space.
     /// <https://drafts.csswg.org/css-color-4/#the-hsl-notation>
-    Hwb,
+    Hwb = 2,
     /// Lab
-    Lab,
+    Lab = 3,
     /// Lch
-    Lch,
+    Lch = 4,
     /// Oklab
-    Oklab,
+    Oklab = 5,
     /// Oklch
-    Oklch,
-    /// xyz-d50
-    XyzD50,
-    /// xyz-d65
-    XyzD65,
+    Oklch = 6,
+    /// The sRGB color space with no gamma mapping.
+    /// <https://drafts.csswg.org/css-color-4/#predefined-sRGB-linear>
+    SrgbLinear = 7,
     /// display-p3
-    DisplayP3,
+    DisplayP3 = 8,
     /// a98-rgb
-    A98Rgb,
+    A98Rgb = 9,
     /// prophoto-rgb
-    ProPhotoRgb,
+    ProPhotoRgb = 10,
     /// rec2020
-    Rec2020,
+    Rec2020 = 11,
+    /// xyz-d50
+    XyzD50 = 12,
+    /// xyz-d65
+    XyzD65 = 13,
 }
 
 pub type SpacePlaceholder = u8;
@@ -202,22 +202,22 @@ mod tests {
     fn test_component_details() {
         let cd = ComponentDetails::from(10.0);
         assert_eq!(cd.value, 10.0);
-        assert_eq!(cd.is_none, false);
+        assert!(!cd.is_none);
 
         let cd = ComponentDetails::from(Component::NAN);
         assert!(cd.value.is_nan());
-        assert_eq!(cd.is_none, true);
+        assert!(cd.is_none);
 
         let cd = ComponentDetails::from(Some(20.0));
         assert_eq!(cd.value, 20.0);
-        assert_eq!(cd.is_none, false);
+        assert!(!cd.is_none);
 
         let cd = ComponentDetails::from(None);
         assert!(cd.value.is_nan());
-        assert_eq!(cd.is_none, true);
+        assert!(cd.is_none);
 
         let cd = ComponentDetails::from(Some(Component::NAN));
         assert!(cd.value.is_nan());
-        assert_eq!(cd.is_none, true);
+        assert!(cd.is_none);
     }
 }

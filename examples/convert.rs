@@ -1,6 +1,7 @@
 use camelion::{Lab, SrgbLinear, ToXyz};
 
 pub fn main() {
+    #[allow(clippy::excessive_precision)]
     let lab = Lab::new(
         56.629300221279735,
         39.237080198427755,

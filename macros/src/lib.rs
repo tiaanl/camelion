@@ -1,4 +1,3 @@
-use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::quote;
@@ -83,7 +82,7 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
                 }
             })
             .for_each(|ident| {
-                let field_name = format!("_{}", ident.to_string().to_case(Case::Snake));
+                let field_name = format!("_{}", ident.to_string().to_lowercase());
                 let field_name = syn::Ident::new(field_name.as_str(), Span::call_site());
                 phantom_fields.push(field_name.clone());
 
