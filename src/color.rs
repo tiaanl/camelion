@@ -96,12 +96,10 @@ impl Color {
     /// Create a new [`Color`]. Each color or alpha component can take values
     /// that can be converted into a [`ComponentDetails`]. This automates the
     /// process of settings values to missing. For example:
-    ///
     /// ```rust
     /// use camelion::{Color, Space};
     /// let c = Color::new(Space::Srgb, None, None, None, 1.0);
     /// ```
-    ///
     /// will set all the color components to missing.
     pub fn new(
         space: Space,

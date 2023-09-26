@@ -1,55 +1,6 @@
 use crate::{Color, Component, Flags, Space};
 
 impl Color {
-    /// Premultiply the color with it's alpha and return the result according
-    /// to:
-    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
-    fn premultiplied(&self) -> Self {
-        // If the alpha value is none, the premultiplied value is the
-        // un-premultiplied value.
-        if self.flags.contains(Flags::ALPHA_IS_NONE) {
-            return self.clone();
-        }
-
-        macro_rules! premultiplied {
-            ($index:expr,$c:expr,$flag:expr) => {{
-                if self.flags.contains($flag) {
-                    None
-                } else {
-                    Some(if self.space.hue_index() != Some($index) {
-                        $c * self.alpha
-                    } else {
-                        $c
-                    })
-                }
-            }};
-        }
-
-        Self::new(
-            self.space,
-            premultiplied!(0, self.components.0, Flags::C0_IS_NONE),
-            premultiplied!(1, self.components.1, Flags::C1_IS_NONE),
-            premultiplied!(2, self.components.2, Flags::C2_IS_NONE),
-            1.0,
-        )
-    }
-
-    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
-    fn un_premultiply(&self, alpha: Option<Component>) -> Self {
-        let alpha = match alpha {
-            Some(alpha) if alpha != 0.0 => alpha,
-            _ => return self.clone(),
-        };
-
-        Self::new(
-            self.space,
-            self.c0().map(|v| v / alpha),
-            self.c1().map(|v| v / alpha),
-            self.c2().map(|v| v / alpha),
-            alpha,
-        )
-    }
-
     /// Create an interpolation that will interpolate from `self` to `other` using the specified [`Space`](color space).
     pub fn interpolate(&self, other: &Self, space: Space) -> Interpolation {
         Interpolation::new(self, other, space)
@@ -130,27 +81,108 @@ impl HueInterpolationMethod {
 }
 
 #[derive(Clone)]
+struct Premultiplied {
+    components: [Option<Component>; 3],
+    alpha: Option<Component>,
+}
+
+impl Premultiplied {
+    /// Un-premultiply the values back into a color using the specified alpha
+    /// value.
+    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
+    fn into_color(self, space: Space, alpha: Option<Component>) -> Color {
+        let alpha = match alpha {
+            Some(alpha) if alpha != 0.0 => alpha,
+            _ => {
+                return Color::new(
+                    space,
+                    self.components[0],
+                    self.components[1],
+                    self.components[2],
+                    alpha,
+                );
+            }
+        };
+
+        let hue_index = space.hue_index();
+
+        macro_rules! c {
+            ($i:literal) => {{
+                if hue_index == Some($i) {
+                    self.components[$i]
+                } else {
+                    self.components[$i].map(|v| v / alpha)
+                }
+            }};
+        }
+
+        Color::new(space, c!(0), c!(1), c!(2), alpha)
+    }
+}
+
+impl From<Color> for Premultiplied {
+    /// Premultiply the color with it's alpha and return the result according
+    /// to:
+    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
+    fn from(value: Color) -> Self {
+        // If the alpha value is none, the premultiplied value is the
+        // un-premultiplied value.
+        if value.flags.contains(Flags::ALPHA_IS_NONE) {
+            return Self {
+                components: [value.c0(), value.c1(), value.c2()],
+                alpha: None,
+            };
+        }
+
+        let hue_index = value.space.hue_index();
+
+        macro_rules! c {
+            ($c:expr,$i:literal) => {{
+                $c.map(|v| {
+                    if hue_index != Some($i) {
+                        v * value.alpha
+                    } else {
+                        v
+                    }
+                })
+            }};
+        }
+
+        Self {
+            components: [c!(value.c0(), 0), c!(value.c1(), 1), c!(value.c2(), 2)],
+            alpha: value.alpha(),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Interpolation {
-    left: Color,
-    left_alpha: Option<Component>,
-
-    right: Color,
-    right_alpha: Option<Component>,
-
+    left: Premultiplied,
+    right: Premultiplied,
     space: Space,
     hue_interpolation_method: HueInterpolationMethod,
 }
 
 impl Interpolation {
     pub fn new(left: &Color, right: &Color, space: Space) -> Self {
-        let left_alpha = left.alpha();
-        let right_alpha = right.alpha();
+        let mut left = left.to_space(space);
+        let mut right = right.to_space(space);
+
+        match (left.alpha(), right.alpha()) {
+            (Some(left), None) => {
+                right.flags.remove(Flags::ALPHA_IS_NONE);
+                right.alpha = left;
+            }
+            (None, Some(right)) => {
+                left.flags.remove(Flags::ALPHA_IS_NONE);
+                left.alpha = right;
+            }
+            _ => {}
+        }
 
         Self {
-            left: left.to_space(space).premultiplied(),
-            left_alpha,
-            right: right.to_space(space).premultiplied(),
-            right_alpha,
+            left: left.into(),
+            right: right.into(),
             space,
             hue_interpolation_method: Default::default(),
         }
@@ -186,27 +218,29 @@ impl Interpolation {
     }
 
     pub fn at(&self, t: Component) -> Color {
-        let left = [self.left.c0(), self.left.c1(), self.left.c2()];
-        let right = [self.right.c0(), self.right.c1(), self.right.c2()];
-
-        let mut result = left;
-
         // println!("left: {:?}", left);
         // println!("right: {:?}", right);
 
         // Interpolate the original alpha components.
         // TODO: This is essentially the same code used for each component,
         // can we somehow not duplicate it here.
-        let alpha = match (self.left_alpha, self.right_alpha) {
+        let alpha = match (self.left.alpha, self.right.alpha) {
             (None, None) => None,
-            (None, Some(right)) => Some(lerp(0.0, right, t)),
-            (Some(left), None) => Some(lerp(left, 0.0, t)),
             (Some(left), Some(right)) => Some(lerp(left, right, t)),
+            (None, Some(_)) | (Some(_), None) => {
+                // The alpha values were adjusted during premultiplication and
+                // should either be both none or both some.
+                unreachable!()
+            }
         };
 
         // Interpolate the premultiplied components.
-        for i in 0..=2 {
-            result[i] = match (left[i], right[i]) {
+        let mut result = Premultiplied {
+            components: [None, None, None],
+            alpha: None,
+        };
+        result.components.iter_mut().enumerate().for_each(|(i, r)| {
+            *r = match (self.left.components[i], self.right.components[i]) {
                 (None, None) => None,
                 (None, Some(right)) => Some(right),
                 (Some(left), None) => Some(left),
@@ -215,11 +249,11 @@ impl Interpolation {
                     _ => lerp(left, right, t),
                 }),
             };
-        }
+        });
 
         // println!("premultiplied result: {:?}", result);
 
-        Color::new(self.space, result[0], result[1], result[2], 1.0).un_premultiply(alpha)
+        result.into_color(self.space, alpha)
     }
 }
 
@@ -477,18 +511,18 @@ mod tests {
     #[test]
     fn test_premultiplied() {
         // rgb(24% 12% 98% / 0.4) => [9.6% 4.8% 39.2%]
-        let left = Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4).premultiplied();
-        assert_component_eq!(left.components.0, 0.096);
-        assert_component_eq!(left.components.1, 0.048);
-        assert_component_eq!(left.components.2, 0.392);
-        assert_component_eq!(left.alpha, 1.0);
+        let left = Premultiplied::from(Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4));
+        assert_component_eq!(left.components[0].unwrap(), 0.096);
+        assert_component_eq!(left.components[1].unwrap(), 0.048);
+        assert_component_eq!(left.components[2].unwrap(), 0.392);
+        assert_component_eq!(left.alpha.unwrap(), 0.4);
 
         // rgb(62% 26% 64% / 0.6) => [37.2% 15.6% 38.4%]
-        let right = Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6).premultiplied();
-        assert_component_eq!(right.components.0, 0.372);
-        assert_component_eq!(right.components.1, 0.156);
-        assert_component_eq!(right.components.2, 0.384);
-        assert_component_eq!(right.alpha, 1.0);
+        let right = Premultiplied::from(Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6));
+        assert_component_eq!(right.components[0].unwrap(), 0.372);
+        assert_component_eq!(right.components[1].unwrap(), 0.156);
+        assert_component_eq!(right.components[2].unwrap(), 0.384);
+        assert_component_eq!(right.alpha.unwrap(), 0.6);
     }
 
     #[test]
@@ -553,17 +587,26 @@ mod tests {
         // assert_component_eq!(middle.components.2, 0.75);
         // assert_component_eq!(middle.alpha, 1.0);
 
+        // // color-mix(in srgb, color(srgb .1 .2 .3 / none), color(srgb .5 .6 .7))
+        // let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, None);
+        // let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 1.0);
+        // let interp = Interpolation::new(&left, &right, Space::Srgb);
+        // // color(${resultColorSpace} 0.3 0.4 0.5)
+        // let result = interp.at(0.5);
+        // assert_component_eq!(result.components.0, 0.3);
+        // assert_component_eq!(result.components.1, 0.4);
+        // assert_component_eq!(result.components.2, 0.5);
+        // assert_component_eq!(result.alpha, 1.0);
+
         // color-mix(in srgb, color(srgb .1 .2 .3 / none), color(srgb .5 .6 .7 / 0.5))
         let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, None);
         let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 0.5);
-        let middle = left
-            .interpolate(&right, Space::Srgb)
-            .at(0.5)
-            .to_space(Space::Srgb);
-        // color(srgb 0.3 0.4 0.5)
-        assert_component_eq!(middle.components.0, 0.3);
-        assert_component_eq!(middle.components.1, 0.4);
-        assert_component_eq!(middle.components.2, 0.5);
-        assert_component_eq!(middle.alpha, 1.0);
+        let interp = Interpolation::new(&left, &right, Space::Srgb);
+        // color(srgb 0.3 0.4 0.5 / 0.5)
+        let result = interp.at(0.5);
+        assert_component_eq!(result.components.0, 0.3);
+        assert_component_eq!(result.components.1, 0.4);
+        assert_component_eq!(result.components.2, 0.5);
+        assert_component_eq!(result.alpha, 0.5);
     }
 }
