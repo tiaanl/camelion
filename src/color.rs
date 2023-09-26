@@ -189,7 +189,7 @@ impl From<Component> for ComponentDetails {
     fn from(value: Component) -> Self {
         Self {
             value,
-            is_none: value.is_nan(),
+            is_none: false,
         }
     }
 }
@@ -200,7 +200,7 @@ impl From<Option<Component>> for ComponentDetails {
             Self::from(value)
         } else {
             Self {
-                value: Component::NAN,
+                value: 0.0,
                 is_none: true,
             }
         }
@@ -220,14 +220,14 @@ mod tests {
         assert_eq!(c.space, Space::Srgb);
 
         let c = Color::new(Space::Srgb, 0.1, 0.2, None, 0.4);
-        assert!(c.components.2.is_nan());
+        assert_eq!(c.components.2, 0.0);
         assert_eq!(c.alpha, 0.4);
         assert_eq!(c.flags, Flags::C2_IS_NONE);
         assert_eq!(c.space, Space::Srgb);
 
         let c = Color::new(Space::Srgb, 0.1, 0.2, 0.3, None);
         assert_eq!(c.components, Components(0.1, 0.2, 0.3));
-        assert!(c.alpha.is_nan());
+        assert_eq!(c.alpha, 0.0);
         assert_eq!(c.flags, Flags::ALPHA_IS_NONE);
         assert_eq!(c.space, Space::Srgb);
     }
@@ -240,18 +240,18 @@ mod tests {
 
         let cd = ComponentDetails::from(Component::NAN);
         assert!(cd.value.is_nan());
-        assert!(cd.is_none);
+        assert!(!cd.is_none);
 
         let cd = ComponentDetails::from(Some(20.0));
         assert_eq!(cd.value, 20.0);
         assert!(!cd.is_none);
 
         let cd = ComponentDetails::from(None);
-        assert!(cd.value.is_nan());
+        assert_eq!(cd.value, 0.0);
         assert!(cd.is_none);
 
         let cd = ComponentDetails::from(Some(Component::NAN));
         assert!(cd.value.is_nan());
-        assert!(cd.is_none);
+        assert!(!cd.is_none);
     }
 }
