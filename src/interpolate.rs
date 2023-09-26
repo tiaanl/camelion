@@ -1,22 +1,40 @@
 use crate::{Color, Component, Flags, Space};
 
 impl Color {
-    /// Premultiply
-    pub fn premultiply(&self) -> (Self, Component) {
-        let alpha = self.alpha;
-        (
-            Self {
-                components: self.components.map(|c| c * self.alpha),
-                alpha: 1.0,
-                flags: self.flags,
-                space: self.space,
-            },
-            alpha,
+    /// Premultiply the color with it's alpha and return the result according
+    /// to:
+    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
+    fn premultiplied(&self) -> Self {
+        // If the alpha value is none, the premultiplied value is the
+        // un-premultiplied value. Otherwise,
+        if self.flags.contains(Flags::ALPHA_IS_NONE) {
+            return self.clone();
+        }
+
+        macro_rules! premultiplied {
+            ($index:expr,$v:expr,$flag:expr) => {{
+                if self.space.hue_index() != Some($index) {
+                    if self.flags.contains($flag) {
+                        None
+                    } else {
+                        Some($v * self.alpha)
+                    }
+                } else {
+                    Some($v)
+                }
+            }};
+        }
+
+        Self::new(
+            self.space,
+            premultiplied!(0, self.components.0, Flags::C0_IS_NONE),
+            premultiplied!(1, self.components.1, Flags::C1_IS_NONE),
+            premultiplied!(2, self.components.2, Flags::C2_IS_NONE),
+            1.0,
         )
     }
 
-    /// Linearly interpolate from this color to another in the color space
-    /// specified using `t` as the progress between them.
+    /// Create an interpolation that will interpolate from `self` to `other` using the specified [`Space`](color space).
     pub fn interpolate(&self, other: &Self, space: Space) -> Interpolation {
         let left = self.to_space(space);
         let right = other.to_space(space);
@@ -119,46 +137,73 @@ impl Interpolation {
         }
     }
 
+    pub fn with_weights(&self, left: Component, right: Component) -> Color {
+        // <https://drafts.csswg.org/css-color-5/#color-mix-percent-norm>
+        let (t, alpha_multiplier) = {
+            let sum = left + right;
+            if sum != 1.0 {
+                let scale = 1.0 / sum;
+
+                if sum < 1.0 {
+                    (right * scale, sum)
+                } else {
+                    (right * scale, 1.0)
+                }
+            } else {
+                (right, 1.0)
+            }
+        };
+
+        let mut result = self.at(t);
+        result.alpha *= alpha_multiplier;
+        result
+    }
+
     pub fn at(&self, t: Component) -> Color {
         macro_rules! component {
-            ($color:expr,$i:tt,$flag:ident) => {{
-                if $color.flags.contains(Flags::$flag) {
+            ($comp:expr,$flags:expr,$flag:expr) => {{
+                if $flags.contains($flag) {
                     None
                 } else {
-                    Some($color.components.$i)
+                    Some($comp)
                 }
             }};
         }
 
-        let left_flags = analogous_missing_components(self.left.space, self.space, self.left.flags);
-        let mut left = self.left.to_space(self.space);
-        left.flags = left_flags;
+        macro_rules! as_components {
+            ($color:expr,$to_space:expr) => {{
+                let analogous_flags =
+                    analogous_missing_components($color.space, $to_space, $color.flags);
+                let mut c = $color.to_space($to_space).premultiplied();
+                c.flags = analogous_flags;
 
-        let left = [
-            component!(left, 0, C0_IS_NONE),
-            component!(left, 1, C1_IS_NONE),
-            component!(left, 2, C2_IS_NONE),
-        ];
+                [
+                    component!(c.components.0, c.flags, Flags::C0_IS_NONE),
+                    component!(c.components.1, c.flags, Flags::C1_IS_NONE),
+                    component!(c.components.2, c.flags, Flags::C2_IS_NONE),
+                ]
+            }};
+        }
 
-        let right_flags =
-            analogous_missing_components(self.right.space, self.space, self.right.flags);
-        let mut right = self.right.to_space(self.space);
-        right.flags = right_flags;
+        // Store the original alpha values, before we premultiply.
+        let left_alpha = component!(self.left.alpha, self.left.flags, Flags::ALPHA_IS_NONE);
+        let right_alpha = component!(self.right.alpha, self.right.flags, Flags::ALPHA_IS_NONE);
 
-        let right = [
-            component!(right, 0, C0_IS_NONE),
-            component!(right, 1, C1_IS_NONE),
-            component!(right, 2, C2_IS_NONE),
-        ];
+        let left = as_components!(self.left, self.space);
+        let right = as_components!(self.right, self.space);
+        let mut result = left;
 
-        let mut result: [Option<Component>; 4] = [
-            None,
-            None,
-            None,
-            Some(lerp(self.left.alpha, self.right.alpha, t)),
-        ];
+        // Interpolate the original alpha components.
+        // TODO: This is essentially the same code used for each component,
+        // can we somehow not duplicate it here.
+        let alpha = match (left_alpha, right_alpha) {
+            (None, None) => None,
+            (None, Some(right)) => Some(right),
+            (Some(left), None) => Some(left),
+            (Some(left), Some(right)) => Some(lerp(left, right, t)),
+        };
 
-        // Interpolate each component.
+        // Interpolate the premultiplied components.
         for i in 0..=2 {
             result[i] = match (left[i], right[i]) {
                 (None, None) => None,
@@ -171,7 +216,19 @@ impl Interpolation {
             };
         }
 
-        Color::new(self.space, result[0], result[1], result[2], result[3])
+        if let Some(alpha) = alpha {
+            // If we have a valid alpha result, we can un-premultiply the result.
+            println!("final alpha: {:?}", alpha);
+            Color::new(
+                self.space,
+                result[0].map(|v| v / alpha),
+                result[1].map(|v| v / alpha),
+                result[2].map(|v| v / alpha),
+                Some(alpha),
+            )
+        } else {
+            Color::new(self.space, result[0], result[1], result[2], alpha)
+        }
     }
 }
 
@@ -424,5 +481,58 @@ mod tests {
 
         let decreasing = interp.clone().with_hue_interpolation(H::Decreasing);
         assert_component_eq!(decreasing.at(0.5).components.0, 10.0);
+    }
+
+    #[test]
+    fn ad_hoc() {
+        // color-mix(in xyz-d65, color(xyz-d65 .1 .2 .3 / none), color(xyz-d65 .5 .6 .7 / none))
+        let left = Color::new(Space::XyzD65, 0.1, 0.2, 0.3, None);
+        let right = Color::new(Space::XyzD65, 0.5, 0.6, 0.7, None);
+        let middle = left.interpolate(&right, Space::XyzD65).at(0.5);
+        // color(xyz-d65 0.3 0.4 0.5 / none)
+        assert_component_eq!(middle.components.0, 0.3);
+        assert_component_eq!(middle.components.1, 0.4);
+        assert_component_eq!(middle.components.2, 0.5);
+        assert_eq!(middle.flags, Flags::ALPHA_IS_NONE);
+
+        // color-mix(in hsl, hsl(120deg 10% 20%) 12.5%, hsl(30deg 30% 40%) 37.5%)
+        let left = Color::new(Space::XyzD65, 0.1, 0.2, 0.3, None);
+        let right = Color::new(Space::XyzD65, 0.5, 0.6, 0.7, None);
+        let middle = left.interpolate(&right, Space::XyzD65).at(0.5);
+        // color(srgb 0.4375 0.415625 0.2625 / 0.5)
+        assert_component_eq!(middle.components.0, 0.3);
+        assert_component_eq!(middle.components.1, 0.4);
+        assert_component_eq!(middle.components.2, 0.5);
+        assert_eq!(middle.flags, Flags::ALPHA_IS_NONE);
+    }
+
+    #[test]
+    fn premultiplied() {
+        // rgb(24% 12% 98% / 0.4) => [9.6% 4.8% 39.2%]
+        let left = Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4).premultiplied();
+        assert_component_eq!(left.components.0, 0.096);
+        assert_component_eq!(left.components.1, 0.048);
+        assert_component_eq!(left.components.2, 0.392);
+        assert_component_eq!(left.alpha, 1.0);
+
+        // rgb(62% 26% 64% / 0.6) => [37.2% 15.6% 38.4%]
+        let right = Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6).premultiplied();
+        assert_component_eq!(right.components.0, 0.372);
+        assert_component_eq!(right.components.1, 0.156);
+        assert_component_eq!(right.components.2, 0.384);
+        assert_component_eq!(right.alpha, 1.0);
+    }
+
+    #[test]
+    fn interpolate_with_alpha() {
+        let left = Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4);
+        let right = Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6);
+
+        let middle = left.interpolate(&right, Space::Srgb).at(0.5);
+
+        assert_component_eq!(middle.components.0, 0.468);
+        assert_component_eq!(middle.components.1, 0.204);
+        assert_component_eq!(middle.components.2, 0.776);
+        assert_component_eq!(middle.alpha, 0.5);
     }
 }
