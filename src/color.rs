@@ -127,6 +127,42 @@ impl Color {
         }
     }
 
+    /// Return the first component of the color.
+    pub fn c0(&self) -> Option<Component> {
+        if self.flags.contains(Flags::C0_IS_NONE) {
+            None
+        } else {
+            Some(self.components.0)
+        }
+    }
+
+    /// Return the second component of the color.
+    pub fn c1(&self) -> Option<Component> {
+        if self.flags.contains(Flags::C1_IS_NONE) {
+            None
+        } else {
+            Some(self.components.1)
+        }
+    }
+
+    /// Return the third component of the color.
+    pub fn c2(&self) -> Option<Component> {
+        if self.flags.contains(Flags::C2_IS_NONE) {
+            None
+        } else {
+            Some(self.components.2)
+        }
+    }
+
+    /// Return the alpha component of the color.
+    pub fn alpha(&self) -> Option<Component> {
+        if self.flags.contains(Flags::ALPHA_IS_NONE) {
+            None
+        } else {
+            Some(self.alpha)
+        }
+    }
+
     /// Return a reference to this color types as the given model.
     pub fn as_model<T>(&self) -> &T {
         unsafe { std::mem::transmute(self) }
