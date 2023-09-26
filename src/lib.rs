@@ -33,9 +33,15 @@ mod xyz;
 pub use color::{Color, ComponentDetails, Components, Flags, Space};
 pub use hsl::Hsl;
 pub use hwb::Hwb;
+pub use interpolate::HueInterpolationMethod;
 pub use lab::{Lab, Lch, Oklab, Oklch};
 pub use rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
 pub use xyz::{ToXyz, XyzD50, XyzD65, D50, D65};
+
+/// Most common types used while working with a camelion [`Color`].
+pub mod prelude {
+    pub use super::{Color, Component, Space};
+}
 
 #[cfg(not(feature = "f64"))]
 /// A 32-bit floating point value that all components are stored as.

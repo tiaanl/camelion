@@ -1,6 +1,4 @@
-use num_traits::Float;
-
-use crate::{Color, Component, Components, Flags, Space};
+use crate::{Color, Component, Flags, Space};
 
 impl Color {
     /// Premultiply
@@ -27,45 +25,100 @@ impl Color {
             left,
             right,
             space,
-            _typed: (),
+            hue_interpolation_method: Default::default(),
         }
     }
 }
 
-fn lerp<T: Float>(a: T, b: T, t: T) -> T {
-    a + (b - a) * t
+fn lerp(a: Component, b: Component, t: Component) -> Component {
+    a + t * (b - a)
 }
 
-pub struct Interpolation<Typed = ()> {
+/// The method used for interpolating hue components.
+/// <https://drafts.csswg.org/css-color-4/#hue-interpolation>
+#[derive(Clone, Copy, Default)]
+pub enum HueInterpolationMethod {
+    /// Hue angles are interpolated to take the shorter of the two arcs between
+    /// the starting and ending hues.
+    /// <https://drafts.csswg.org/css-color-4/#hue-shorter>
+    #[default]
+    Shorter,
+    /// Hue angles are interpolated to take the longer of the two arcs between
+    /// the starting and ending hues.
+    /// <https://drafts.csswg.org/css-color-4/#hue-longer>
+    Longer,
+    /// Hue angles are interpolated so that, as they progress from the first
+    /// color to the second, the angle is always increasing.
+    /// <https://drafts.csswg.org/css-color-4/#hue-increasing>
+    Increasing,
+    /// Hue angles are interpolated so that, as they progress from the first
+    /// color to the second, the angle is always decreasing.
+    /// <https://drafts.csswg.org/css-color-4/#hue-decreasing>
+    Decreasing,
+}
+
+impl HueInterpolationMethod {
+    fn adjust_hue(&self, a: &mut Component, b: &mut Component) {
+        debug_assert!(!a.is_nan());
+        debug_assert!(!b.is_nan());
+
+        *a = a.rem_euclid(360.0);
+        *b = b.rem_euclid(360.0);
+
+        match self {
+            HueInterpolationMethod::Shorter => {
+                let delta = *b - *a;
+
+                if delta > 180.0 {
+                    *a += 360.0;
+                } else if delta < -180.0 {
+                    *b += 360.0;
+                }
+            }
+            HueInterpolationMethod::Longer => {
+                let delta = *b - *a;
+                if 0.0 < delta && delta < 180.0 {
+                    *a += 360.0;
+                } else if -180.0 < delta && delta <= 0.0 {
+                    *b += 360.0;
+                }
+            }
+            HueInterpolationMethod::Increasing => {
+                if *b < *a {
+                    *b += 360.0;
+                }
+            }
+            HueInterpolationMethod::Decreasing => {
+                if *a < *b {
+                    *a += 360.0;
+                }
+            }
+        }
+    }
+
+    fn lerp(&self, a: Component, b: Component, t: Component) -> Component {
+        let (mut a, mut b) = (a, b);
+        self.adjust_hue(&mut a, &mut b);
+        lerp(a, b, t).rem_euclid(360.0)
+    }
+}
+
+#[derive(Clone)]
+pub struct Interpolation {
     left: Color,
     right: Color,
     space: Space,
-
-    _typed: Typed,
+    hue_interpolation_method: HueInterpolationMethod,
 }
 
-pub struct Premultiplied {
-    _left_alpha: Component,
-    _right_alpha: Component,
-}
-
-impl Interpolation<()> {
-    pub fn premultiply(&self) -> Interpolation<Premultiplied> {
-        let (left, left_alpha) = self.left.premultiply();
-        let (right, right_alpha) = self.right.premultiply();
-        Interpolation {
-            left,
-            right,
-            space: self.space,
-            _typed: Premultiplied {
-                _left_alpha: left_alpha,
-                _right_alpha: right_alpha,
-            },
+impl Interpolation {
+    pub fn with_hue_interpolation(self, hue_interpolation_method: HueInterpolationMethod) -> Self {
+        Self {
+            hue_interpolation_method,
+            ..self
         }
     }
-}
 
-impl<Typed> Interpolation<Typed> {
     pub fn at(&self, t: Component) -> Color {
         macro_rules! component {
             ($color:expr,$i:tt,$flag:ident) => {{
@@ -98,52 +151,27 @@ impl<Typed> Interpolation<Typed> {
             component!(right, 2, C2_IS_NONE),
         ];
 
-        let mut result = Components(0.0, 0.0, 0.0);
-        let mut result_flags = Flags::empty();
+        let mut result: [Option<Component>; 4] = [
+            None,
+            None,
+            None,
+            Some(lerp(self.left.alpha, self.right.alpha, t)),
+        ];
 
-        for i in 0..3 {
-            let value = match (left[i], right[i]) {
+        // Interpolate each component.
+        for i in 0..=2 {
+            result[i] = match (left[i], right[i]) {
                 (None, None) => None,
                 (None, Some(right)) => Some(right),
                 (Some(left), None) => Some(left),
-                (Some(left), Some(right)) => Some(lerp(left, right, t)),
+                (Some(left), Some(right)) => Some(match self.space.hue_index() {
+                    Some(index) if index == i => self.hue_interpolation_method.lerp(left, right, t),
+                    _ => lerp(left, right, t),
+                }),
             };
-
-            match i {
-                0 => {
-                    result.0 = if let Some(value) = value {
-                        value
-                    } else {
-                        result_flags.set(Flags::C0_IS_NONE, true);
-                        Component::NAN
-                    }
-                }
-                1 => {
-                    result.1 = if let Some(value) = value {
-                        value
-                    } else {
-                        result_flags.set(Flags::C1_IS_NONE, true);
-                        Component::NAN
-                    }
-                }
-                2 => {
-                    result.2 = if let Some(value) = value {
-                        value
-                    } else {
-                        result_flags.set(Flags::C2_IS_NONE, true);
-                        Component::NAN
-                    }
-                }
-                _ => unreachable!(),
-            }
         }
 
-        Color {
-            components: result,
-            alpha: lerp(self.left.alpha, self.right.alpha, t),
-            flags: result_flags,
-            space: self.space,
-        }
+        Color::new(self.space, result[0], result[1], result[2], result[3])
     }
 }
 
@@ -190,7 +218,7 @@ impl Space {
 
     /// Returns the index of a hue component, otherwise None if the color does
     /// not have a hue component.
-    fn _hue_index(&self) -> Option<usize> {
+    fn hue_index(&self) -> Option<usize> {
         match self {
             Space::Hsl => Some(0),
             Space::Hwb => Some(0),
@@ -285,26 +313,6 @@ mod tests {
     }
 
     #[test]
-    fn basic() {
-        let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, 1.0);
-        let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 1.0);
-        let mixed = left.interpolate(&right, Space::Srgb).at(0.5);
-        assert_component_eq!(mixed.components.0, 0.3);
-        assert_component_eq!(mixed.components.1, 0.4);
-        assert_component_eq!(mixed.components.2, 0.5);
-        assert_component_eq!(mixed.alpha, 1.0);
-        assert_eq!(mixed.space, Space::Srgb);
-
-        let interp = left.interpolate(&right, Space::Srgb);
-        let middle = interp.at(0.5);
-        assert_component_eq!(middle.components.0, 0.3);
-        assert_component_eq!(middle.components.1, 0.4);
-        assert_component_eq!(middle.components.2, 0.5);
-        assert_component_eq!(middle.alpha, 1.0);
-        assert_eq!(middle.space, Space::Srgb);
-    }
-
-    #[test]
     fn test_analogous_missing_components() {
         use Flags as F;
         use Space as S;
@@ -384,5 +392,37 @@ mod tests {
                 from, to, result, expected
             );
         }
+    }
+
+    #[test]
+    fn linear_components() {
+        let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, 1.0);
+        let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 1.0);
+
+        let result = left.interpolate(&right, Space::Srgb).at(0.75);
+        assert_eq!(result.components.0, 0.4);
+        assert_eq!(result.components.1, 0.5);
+        assert_eq!(result.components.2, 0.6);
+    }
+
+    #[test]
+    fn hue_components() {
+        use HueInterpolationMethod as H;
+
+        let left = Color::new(Space::Hsl, 50.0, 0.3, 0.7, 1.0);
+        let right = Color::new(Space::Hsl, -30.0, 0.7, 0.3, 1.0);
+        let interp = left.interpolate(&right, Space::Hsl);
+
+        let shorter = interp.clone().with_hue_interpolation(H::Shorter);
+        assert_component_eq!(shorter.at(0.5).components.0, 10.0);
+
+        let longer = interp.clone().with_hue_interpolation(H::Longer);
+        assert_component_eq!(longer.at(0.5).components.0, 190.0);
+
+        let increasing = interp.clone().with_hue_interpolation(H::Increasing);
+        assert_component_eq!(increasing.at(0.5).components.0, 190.0);
+
+        let decreasing = interp.clone().with_hue_interpolation(H::Decreasing);
+        assert_component_eq!(decreasing.at(0.5).components.0, 10.0);
     }
 }
