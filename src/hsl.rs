@@ -1,6 +1,6 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::{color::HasSpace, Color, Component, Components, Space};
+use crate::{color::HasSpace, Color, Component, Components, Flags, Space};
 
 camelion_macros::gen_model! {
     /// A color specified with the HSL notation in the sRGB color space.
@@ -20,10 +20,20 @@ impl HasSpace for Hsl {
 
 impl From<Hsl> for Color {
     fn from(value: Hsl) -> Self {
+        // Conversions can yield a hue value of NaN, which should be
+        // interpretet as a `none` component.
         Color {
-            components: Components(value.hue, value.saturation, value.lightness),
+            components: Components(
+                if value.hue.is_nan() { 0.0 } else { value.hue },
+                value.saturation,
+                value.lightness,
+            ),
             alpha: value.alpha,
-            flags: value.flags,
+            flags: if value.hue.is_nan() {
+                value.flags | Flags::C0_IS_NONE
+            } else {
+                value.flags
+            },
             space: Hsl::SPACE,
         }
     }

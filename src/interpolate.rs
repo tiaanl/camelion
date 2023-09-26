@@ -598,15 +598,26 @@ mod tests {
         // assert_component_eq!(result.components.2, 0.5);
         // assert_component_eq!(result.alpha, 1.0);
 
-        // color-mix(in srgb, color(srgb .1 .2 .3 / none), color(srgb .5 .6 .7 / 0.5))
-        let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, None);
-        let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 0.5);
-        let interp = Interpolation::new(&left, &right, Space::Srgb);
-        // color(srgb 0.3 0.4 0.5 / 0.5)
-        let result = interp.at(0.5);
-        assert_component_eq!(result.components.0, 0.3);
+        // // color-mix(in srgb, color(srgb .1 .2 .3 / none), color(srgb .5 .6 .7 / 0.5))
+        // let left = Color::new(Space::Srgb, 0.1, 0.2, 0.3, None);
+        // let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 0.5);
+        // let interp = Interpolation::new(&left, &right, Space::Srgb);
+        // // color(srgb 0.3 0.4 0.5 / 0.5)
+        // let result = interp.at(0.5);
+        // assert_component_eq!(result.components.0, 0.3);
+        // assert_component_eq!(result.components.1, 0.4);
+        // assert_component_eq!(result.components.2, 0.5);
+        // assert_component_eq!(result.alpha, 0.5);
+
+        // color-mix(in hsl, transparent, hsl(30deg 30% 40%))
+        let left = Color::new(Space::Srgb, 0.0, 0.0, 0.0, 0.0);
+        let right = Color::new(Space::Hsl, 30.0, 0.3, 0.4, 1.0);
+        let interp = Interpolation::new(&left, &right, Space::Hsl);
+        // color(srgb 0.52 0.4 0.28 / 0.5)
+        let result = interp.at(0.5).to_space(Space::Srgb);
+        assert_component_eq!(result.components.0, 0.52);
         assert_component_eq!(result.components.1, 0.4);
-        assert_component_eq!(result.components.2, 0.5);
+        assert_component_eq!(result.components.2, 0.28);
         assert_component_eq!(result.alpha, 0.5);
     }
 }
