@@ -8,7 +8,7 @@ pub fn main() {
     let xyz_d50 = lab.to_xyz();
 
     // 0.31863421971306805, 0.23900587532696937, 0.041636956453517074
-    let xyz_d65 = xyz_d50.to_xyz_d65();
+    let xyz_d65 = xyz_d50.transfer();
 
     // 0.6444796819705821, 0.14126329114027164, 0.012983032342173012
     let srgb_linear = SrgbLinear::from(xyz_d65);

@@ -2,11 +2,10 @@
 
 use crate::{
     color::{Color, Components, Space},
-    math::{transform, transform_3x3, Transform},
     models::{
         A98Rgb, A98RgbLinear, DisplayP3, DisplayP3Linear, Hsl, Hwb, Lab, Lch, Model, Oklab, Oklch,
         ProPhotoRgb, ProPhotoRgbLinear, Rec2020, Rec2020Linear, Srgb, SrgbLinear, ToXyz, XyzD50,
-        XyzD65,
+        XyzD65, D50, D65,
     },
 };
 
@@ -39,10 +38,16 @@ impl Color {
             (S::Srgb, S::Hwb) => return self.as_model::<Srgb>().to_hwb().to_color(self.alpha),
             (S::Hwb, S::Srgb) => return self.as_model::<Hwb>().to_srgb().to_color(self.alpha),
             (S::XyzD50, S::XyzD65) => {
-                return self.as_model::<XyzD50>().to_xyz_d65().to_color(self.alpha)
+                return self
+                    .as_model::<XyzD50>()
+                    .transfer::<D65>()
+                    .to_color(self.alpha);
             }
             (S::XyzD65, S::XyzD50) => {
-                return self.as_model::<XyzD65>().to_xyz_d50().to_color(self.alpha)
+                return self
+                    .as_model::<XyzD65>()
+                    .transfer::<D50>()
+                    .to_color(self.alpha)
             }
             (S::Hsl, S::Hwb) => {
                 return self
@@ -67,81 +72,79 @@ impl Color {
                 .as_model::<Srgb>()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
-            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz().to_xyz_d50(),
+                .transfer(),
+            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz().transfer(),
             S::Hsl => self
                 .as_model::<Hsl>()
                 .to_srgb()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
             S::Hwb => self
                 .as_model::<Hwb>()
                 .to_srgb()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
             S::Lab => self.as_model::<Lab>().to_xyz(),
             S::Lch => self.as_model::<Lch>().to_rectangular().to_xyz(),
-            S::Oklab => self.as_model::<Oklab>().to_xyz().to_xyz_d50(),
+            S::Oklab => self.as_model::<Oklab>().to_xyz().transfer(),
             S::Oklch => self
                 .as_model::<Oklch>()
                 .to_rectangular()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
             S::XyzD50 => self.as_model::<XyzD50>().clone(),
-            S::XyzD65 => self.as_model::<XyzD65>().to_xyz_d50(),
+            S::XyzD65 => self.as_model::<XyzD65>().transfer(),
             S::DisplayP3 => self
                 .as_model::<DisplayP3>()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
             S::A98Rgb => self
                 .as_model::<A98Rgb>()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
             S::ProPhotoRgb => self.as_model::<ProPhotoRgb>().to_linear_light().to_xyz(),
             S::Rec2020 => self
                 .as_model::<Rec2020>()
                 .to_linear_light()
                 .to_xyz()
-                .to_xyz_d50(),
+                .transfer(),
         };
 
         match space {
-            S::Srgb => SrgbLinear::from(xyz.to_xyz_d65())
+            S::Srgb => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_color(self.alpha),
-            S::SrgbLinear => SrgbLinear::from(xyz.to_xyz_d65()).to_color(self.alpha),
-            S::Hsl => SrgbLinear::from(xyz.to_xyz_d65())
+            S::SrgbLinear => SrgbLinear::from(xyz.transfer()).to_color(self.alpha),
+            S::Hsl => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_hsl()
                 .to_color(self.alpha),
-            S::Hwb => SrgbLinear::from(xyz.to_xyz_d65())
+            S::Hwb => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_hwb()
                 .to_color(self.alpha),
             S::Lab => Lab::from(xyz).to_color(self.alpha),
             S::Lch => Lab::from(xyz).to_polar().to_color(self.alpha),
-            S::Oklab => Oklab::from(xyz.to_xyz_d65()).to_color(self.alpha),
-            S::Oklch => Oklab::from(xyz.to_xyz_d65())
-                .to_polar()
-                .to_color(self.alpha),
-            S::DisplayP3 => DisplayP3Linear::from(xyz.to_xyz_d65())
+            S::Oklab => Oklab::from(xyz.transfer()).to_color(self.alpha),
+            S::Oklch => Oklab::from(xyz.transfer()).to_polar().to_color(self.alpha),
+            S::DisplayP3 => DisplayP3Linear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_color(self.alpha),
-            S::A98Rgb => A98RgbLinear::from(xyz.to_xyz_d65())
+            S::A98Rgb => A98RgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_color(self.alpha),
             S::ProPhotoRgb => ProPhotoRgbLinear::from(xyz)
                 .to_gamma_encoded()
                 .to_color(self.alpha),
-            S::Rec2020 => Rec2020Linear::from(xyz.to_xyz_d65())
+            S::Rec2020 => Rec2020Linear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_color(self.alpha),
             S::XyzD50 => xyz.to_color(self.alpha),
-            S::XyzD65 => xyz.to_xyz_d65().to_color(self.alpha),
+            S::XyzD65 => xyz.transfer::<D65>().to_color(self.alpha),
         }
     }
 }
@@ -172,37 +175,37 @@ impl Hwb {
     }
 }
 
-impl XyzD50 {
-    /// Convert this model from CIE-XYZ with a D50 white point to a D65 white
-    /// point.
-    pub fn to_xyz_d65(&self) -> XyzD65 {
-        #[rustfmt::skip]
-        #[allow(clippy::excessive_precision)]
-        const MAT: Transform = transform_3x3(
-             0.9554734527042182,   -0.028369706963208136,  0.012314001688319899,
-            -0.023098536874261423,  1.0099954580058226,   -0.020507696433477912,
-             0.0632593086610217,    0.021041398966943008,  1.3303659366080753,
-        );
+// impl XyzD50 {
+//     /// Convert this model from CIE-XYZ with a D50 white point to a D65 white
+//     /// point.
+//     pub fn to_xyz_d65(&self) -> XyzD65 {
+//         #[rustfmt::skip]
+//         #[allow(clippy::excessive_precision)]
+//         const MAT: Transform = transform_3x3(
+//              0.9554734527042182,   -0.028369706963208136,  0.012314001688319899,
+//             -0.023098536874261423,  1.0099954580058226,   -0.020507696433477912,
+//              0.0632593086610217,    0.021041398966943008,  1.3303659366080753,
+//         );
 
-        transform(&MAT, Components(self.x, self.y, self.z)).into()
-    }
-}
+//         transform(&MAT, Components(self.x, self.y, self.z)).into()
+//     }
+// }
 
-impl XyzD65 {
-    /// Convert this model from CIE-XYZ with a D65 white point to a D50 white
-    /// point.
-    pub fn to_xyz_d50(&self) -> XyzD50 {
-        #[rustfmt::skip]
-        #[allow(clippy::excessive_precision)]
-        const MAT: Transform = transform_3x3(
-             1.0479298208405488,    0.029627815688159344, -0.009243058152591178,
-             0.022946793341019088,  0.990434484573249,     0.015055144896577895,
-            -0.05019222954313557,  -0.01707382502938514,   0.7518742899580008,
-        );
+// impl XyzD65 {
+//     /// Convert this model from CIE-XYZ with a D65 white point to a D50 white
+//     /// point.
+//     pub fn to_xyz_d50(&self) -> XyzD50 {
+//         #[rustfmt::skip]
+//         #[allow(clippy::excessive_precision)]
+//         const MAT: Transform = transform_3x3(
+//              1.0479298208405488,    0.029627815688159344, -0.009243058152591178,
+//              0.022946793341019088,  0.990434484573249,     0.015055144896577895,
+//             -0.05019222954313557,  -0.01707382502938514,   0.7518742899580008,
+//         );
 
-        transform(&MAT, Components(self.x, self.y, self.z)).into()
-    }
-}
+//         transform(&MAT, Components(self.x, self.y, self.z)).into()
+//     }
+// }
 
 mod util {
     use crate::color::{Component, Components};
