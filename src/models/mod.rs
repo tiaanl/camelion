@@ -21,7 +21,4 @@ pub use xyz::*;
 pub trait Model {
     /// Convert a model to a generic [`Color`].
     fn to_color(&self, alpha: Component) -> Color;
-
-    /// Convert a generic [`Color`] to a ls.
-    fn to_model(color: &Color) -> Self;
 }

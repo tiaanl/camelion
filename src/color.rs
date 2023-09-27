@@ -85,7 +85,7 @@ pub trait HasSpace {
     const SPACE: Space;
 }
 
-/// Struct that can hold a color of any color space.
+/// Used to hold any CSS supported color.
 #[derive(Clone, Debug)]
 pub struct Color {
     /// The three components that make up any color.
@@ -168,8 +168,8 @@ impl Color {
     }
 
     /// Return a reference to this color types as the given model.
-    pub fn as_model<T: Model>(&self) -> T {
-        T::to_model(self)
+    pub fn as_model<T: Model + From<Components>>(&self) -> T {
+        self.components.into()
     }
 }
 
