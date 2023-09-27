@@ -1,6 +1,6 @@
 //! Model a color in the CIE-XYZ color space.
 
-use crate::color::{Color, Component, Components, HasSpace, Space};
+use crate::color::{Component, Components, HasSpace, Space};
 
 pub trait WhitePoint {
     const WHITE_POINT: Components;
@@ -54,43 +54,4 @@ pub type XyzD65 = Xyz<D65>;
 
 impl HasSpace for XyzD65 {
     const SPACE: Space = Space::XyzD65;
-}
-
-impl<W: WhitePoint> From<Xyz<W>> for Color
-where
-    Xyz<W>: HasSpace,
-{
-    fn from(value: Xyz<W>) -> Self {
-        Self {
-            components: Components(value.x, value.y, value.z),
-            alpha: value.alpha,
-            flags: value.flags,
-            space: <Xyz<W> as HasSpace>::SPACE,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn as_model() {
-        let color = Color::new(Space::XyzD50, 0.1, 0.2, 0.3, 0.4);
-
-        let model = color.as_model::<XyzD50>().clone();
-        assert_eq!(model.x, color.components.0);
-        assert_eq!(model.y, color.components.1);
-        assert_eq!(model.z, color.components.2);
-        assert_eq!(model.alpha, color.alpha);
-        assert_eq!(model.flags, color.flags);
-
-        let back = Color::from(model);
-        assert_eq!(back.components.0, color.components.0);
-        assert_eq!(back.components.1, color.components.1);
-        assert_eq!(back.components.2, color.components.2);
-        assert_eq!(back.alpha, color.alpha);
-        assert_eq!(back.flags, color.flags);
-        assert_eq!(back.space, Space::XyzD50);
-    }
 }

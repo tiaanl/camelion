@@ -1,7 +1,7 @@
 //! Model a color in the sRGB color space.
 
 use crate::{
-    color::{Color, Component, Components, HasSpace, Space},
+    color::{Component, Components, HasSpace, Space},
     math::{transform, transform_3x3, Transform},
     models::xyz::{ToXyz, XyzD50, XyzD65, D50, D65},
 };
@@ -192,7 +192,7 @@ impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded>
     pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
         let Components(red, green, blue) =
             S::to_linear_light(&Components(self.red, self.green, self.blue));
-        Rgb::new(red, green, blue, self.alpha)
+        Rgb::new(red, green, blue)
     }
 }
 
@@ -200,21 +200,7 @@ impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::LinearLight> 
     pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
         let Components(red, green, blue) =
             S::to_gamma_encoded(&Components(self.red, self.green, self.blue));
-        Rgb::new(red, green, blue, self.alpha)
-    }
-}
-
-impl<S: space::Space, E: encoding::Encoding> From<Rgb<S, E>> for Color
-where
-    Rgb<S, E>: HasSpace,
-{
-    fn from(value: Rgb<S, E>) -> Self {
-        Self {
-            components: Components(value.red, value.green, value.blue),
-            alpha: value.alpha,
-            flags: value.flags,
-            space: <Rgb<S, E> as HasSpace>::SPACE,
-        }
+        Rgb::new(red, green, blue)
     }
 }
 
@@ -235,8 +221,7 @@ impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
             -0.4986107602930033,  0.04155505740717561, 1.0569715142428786,
         );
 
-        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
-        Self::new(red, green, blue, value.alpha)
+        transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }
 
@@ -250,8 +235,7 @@ impl ToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
             0.1804807884018343,  0.07219231536073371, 0.9505321522496606,
         );
 
-        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        Xyz::new(x, y, z, self.alpha)
+        transform(&TO_XYZ, Components(self.red, self.green, self.blue)).into()
     }
 }
 
@@ -280,8 +264,7 @@ impl ToXyz<D65> for DisplayP3Linear {
             0.1982172852343625,  0.079286914093745,   1.0439443689009757,
         );
 
-        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        Xyz::new(x, y, z, self.alpha)
+        transform(&TO_XYZ, Components(self.red, self.green, self.blue)).into()
     }
 }
 
@@ -295,8 +278,7 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
             -0.40271078445071684,  0.02362468584194359,  0.9568845240076873,
         );
 
-        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
-        Self::new(red, green, blue, value.alpha)
+        transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }
 
@@ -318,8 +300,7 @@ impl ToXyz<D65> for A98RgbLinear {
             0.18822864623499472, 0.07529145849399789, 0.9913375368376389,
         );
 
-        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        XyzD65::new(x, y, z, self.alpha)
+        transform(&TO_XYZ, Components(self.red, self.green, self.blue)).into()
     }
 }
 
@@ -333,8 +314,7 @@ impl From<XyzD65> for A98RgbLinear {
             -0.3447313507783295,  0.04155505740717561,  1.0151749943912054,
         );
 
-        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
-        Self::new(red, green, blue, value.alpha)
+        transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }
 
@@ -356,8 +336,7 @@ impl ToXyz<D50> for ProPhotoRgbLinear {
             0.0313493495815248,  0.00008565396060525902, 0.8251046025104601,
         );
 
-        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        XyzD50::new(x, y, z, self.alpha)
+        transform(&TO_XYZ, Components(self.red, self.green, self.blue)).into()
     }
 }
 
@@ -371,8 +350,7 @@ impl From<XyzD50> for ProPhotoRgbLinear {
             -0.05110628506753401,  0.02053603239147973, 1.2119675456389454,
         );
 
-        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
-        Self::new(red, green, blue, value.alpha)
+        transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }
 
@@ -394,8 +372,7 @@ impl ToXyz<D65> for Rec2020Linear {
             0.16888097516417205, 0.059301716469861945, 1.0609850577107909,
         );
 
-        let [x, y, z] = transform(&TO_XYZ, self.red, self.green, self.blue);
-        XyzD65::new(x, y, z, self.alpha)
+        transform(&TO_XYZ, Components(self.red, self.green, self.blue)).into()
     }
 }
 
@@ -409,23 +386,6 @@ impl From<XyzD65> for Rec2020Linear {
             -0.2533662813736598,  0.01576854581391113,  0.942103121235474,
         );
 
-        let [red, green, blue] = transform(&FROM_XYZ, value.x, value.y, value.z);
-        Self::new(red, green, blue, value.alpha)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn as_model() {
-        let color = Color::new(Space::DisplayP3, 0.1, 0.2, 0.3, 0.4);
-        let model = color.as_model::<DisplayP3>();
-        assert_eq!(model.red, color.components.0);
-        assert_eq!(model.green, color.components.1);
-        assert_eq!(model.blue, color.components.2);
-        assert_eq!(model.alpha, color.alpha);
-        assert_eq!(model.flags, color.flags);
+        transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }

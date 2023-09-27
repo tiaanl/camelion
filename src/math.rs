@@ -1,6 +1,6 @@
 //! Math utility functions.
 
-use crate::color::Component;
+use crate::color::{Component, Components};
 use euclid::default::{Transform3D, Vector3D};
 use std::marker::PhantomData;
 
@@ -9,14 +9,10 @@ pub type Transform = Transform3D<Component>;
 type Vector = Vector3D<Component>;
 
 /// Multiply the given matrix in `transform` with the 3 components.
-pub fn transform(
-    transform: &Transform,
-    x: Component,
-    y: Component,
-    z: Component,
-) -> [Component; 3] {
-    let Vector { x, y, z, .. } = transform.transform_vector3d(Vector::new(x, y, z));
-    [x, y, z]
+pub fn transform(transform: &Transform, components: Components) -> Components {
+    let Vector { x, y, z, .. } =
+        transform.transform_vector3d(Vector::new(components.0, components.1, components.2));
+    Components(x, y, z)
 }
 
 #[allow(clippy::too_many_arguments)]

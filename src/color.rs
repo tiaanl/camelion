@@ -3,6 +3,8 @@
 
 use bitflags::bitflags;
 
+use crate::models::Model;
+
 #[cfg(not(feature = "f64"))]
 /// A 32-bit floating point value that all components are stored as.
 pub type Component = f32;
@@ -78,8 +80,6 @@ pub enum Space {
     /// xyz-d65
     XyzD65 = 13,
 }
-
-pub type SpacePlaceholder = u8;
 
 pub trait HasSpace {
     const SPACE: Space;
@@ -168,8 +168,8 @@ impl Color {
     }
 
     /// Return a reference to this color types as the given model.
-    pub fn as_model<T>(&self) -> &T {
-        unsafe { std::mem::transmute(self) }
+    pub fn as_model<T: Model>(&self) -> T {
+        T::to_model(self)
     }
 }
 

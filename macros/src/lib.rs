@@ -42,33 +42,6 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
     let mut phantom_fields: Vec<syn::Ident> = vec![];
 
     if let syn::Fields::Named(ref mut named) = input.fields {
-        named.named.push(
-            syn::Field::parse_named
-                .parse2(syn::parse_quote! {
-                    /// The alpha component of the color.
-                    pub alpha: Component
-                })
-                .unwrap(),
-        );
-
-        named.named.push(
-            syn::Field::parse_named
-                .parse2(syn::parse_quote! {
-                    /// Holds various flags about the color.
-                    pub flags: crate::color::Flags
-                })
-                .unwrap(),
-        );
-
-        named.named.push(
-            syn::Field::parse_named
-                .parse2(syn::parse_quote! {
-                    /// A placeholder for the color space.
-                    _space: crate::color::SpacePlaceholder
-                })
-                .unwrap(),
-        );
-
         // Phantom Fields.
         input
             .generics
@@ -103,35 +76,36 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
         impl #impl_gen #struct_name #type_gen {
             /// Create a new color having this color space.
             pub fn new(
-                #field1: impl Into<crate::color::ComponentDetails>,
-                #field2: impl Into<crate::color::ComponentDetails>,
-                #field3: impl Into<crate::color::ComponentDetails>,
-                alpha: impl Into<crate::color::ComponentDetails>
+                #field1: crate::color::Component,
+                #field2: crate::color::Component,
+                #field3: crate::color::Component,
             ) -> Self {
-                let mut flags = crate::color::Flags::empty();
-
-                let #field1 = #field1
-                    .into()
-                    .value_and_flag(&mut flags, crate::color::Flags::C0_IS_NONE);
-                let #field2 = #field2
-                    .into()
-                    .value_and_flag(&mut flags, crate::color::Flags::C1_IS_NONE);
-                let #field3 = #field3
-                    .into()
-                    .value_and_flag(&mut flags, crate::color::Flags::C2_IS_NONE);
-                let alpha = alpha
-                    .into()
-                    .value_and_flag(&mut flags, crate::color::Flags::ALPHA_IS_NONE);
-
                 Self {
                     #field1,
                     #field2,
                     #field3,
-                    alpha,
-                    flags,
-                    _space: Default::default(),
                     #(#phantom_fields: std::marker::PhantomData,)*
                 }
+            }
+        }
+
+        impl #impl_gen From<crate::color::Components> for #struct_name #type_gen {
+            fn from(value: crate::color::Components) -> Self {
+                Self::new(value.0, value.1, value.2)
+            }
+        }
+
+        impl #impl_gen crate::models::Model for #struct_name #type_gen where Self: crate::color::HasSpace {
+            fn to_color(&self, alpha: crate::color::Component) -> crate::color::Color {
+                crate::color::Color::new(<Self as crate::color::HasSpace>::SPACE,
+                    if self.#field1.is_nan() { None } else { Some(self.#field1) },
+                    if self.#field2.is_nan() { None } else { Some(self.#field2) },
+                    if self.#field3.is_nan() { None } else { Some(self.#field3) },
+                    alpha)
+                }
+
+            fn to_model(color: &crate::color::Color) -> Self {
+                Self::new(color.components.0, color.components.1, color.components.2)
             }
         }
     };

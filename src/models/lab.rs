@@ -1,5 +1,5 @@
 use crate::{
-    color::{Color, Component, Components, Space},
+    color::{Component, Components, HasSpace, Space},
     math::{transform, transform_3x3, Transform},
     models::xyz::{ToXyz, WhitePoint, Xyz, XyzD50, XyzD65, D50, D65},
 };
@@ -33,7 +33,7 @@ impl<S: space::Space> Rectangular<S> {
         let hue = self.b.atan2(self.a).to_degrees().rem_euclid(360.0);
         let chroma = (self.a * self.a + self.b * self.b).sqrt();
 
-        Polar::new(self.lightness, chroma, hue, self.alpha)
+        Polar::new(self.lightness, chroma, hue)
     }
 }
 
@@ -52,12 +52,16 @@ impl<S: space::Space> Polar<S> {
         let a = self.chroma * hue.cos();
         let b = self.chroma * hue.sin();
 
-        Rectangular::new(self.lightness, a, b, self.alpha)
+        Rectangular::new(self.lightness, a, b)
     }
 }
 
 /// The model for a color specified in the CIE-Lab color space with the rectangular orthogonal form.
 pub type Lab = Rectangular<space::Lab>;
+
+impl HasSpace for Lab {
+    const SPACE: Space = Space::Lab;
+}
 
 impl ToXyz<D50> for Lab {
     fn to_xyz(&self) -> Xyz<D50> {
@@ -96,7 +100,6 @@ impl ToXyz<D50> for Lab {
             x * D50::WHITE_POINT.0,
             y * D50::WHITE_POINT.1,
             z * D50::WHITE_POINT.2,
-            self.alpha,
         )
     }
 }
@@ -125,33 +128,23 @@ impl From<XyzD50> for Lab {
         let a = 500.0 * (f0 - f1);
         let b = 200.0 * (f1 - f2);
 
-        Lab::new(lightness, a, b, value.alpha)
-    }
-}
-
-impl From<Lab> for Color {
-    fn from(value: Lab) -> Self {
-        Color::new(Space::Lab, value.lightness, value.a, value.b, value.alpha)
+        Lab::new(lightness, a, b)
     }
 }
 
 /// The model for a color specified in the CIE-Lab color space with the cylindrical polar form.
 pub type Lch = Polar<space::Lab>;
 
-impl From<Lch> for Color {
-    fn from(value: Lch) -> Self {
-        Color::new(
-            Space::Lch,
-            value.lightness,
-            value.chroma,
-            value.hue,
-            value.alpha,
-        )
-    }
+impl HasSpace for Lch {
+    const SPACE: Space = Space::Lch;
 }
 
 /// The model for a color specified in the oklab color space with the rectangular orthogonal form.
 pub type Oklab = Rectangular<space::Oklab>;
+
+impl HasSpace for Oklab {
+    const SPACE: Space = Space::Oklab;
+}
 
 impl From<XyzD65> for Oklab {
     fn from(value: XyzD65) -> Self {
@@ -171,10 +164,9 @@ impl From<XyzD65> for Oklab {
             -0.0040720468,  0.4505937099, -0.8086757660,
         );
 
-        let lms = transform(&XYZ_TO_LMS, value.x, value.y, value.z);
-        let [x, y, z] = lms.map(|v| v.cbrt());
-        let [lightness, a, b] = transform(&LMS_TO_OKLAB, x, y, z);
-        Self::new(lightness, a, b, value.alpha)
+        let lms = transform(&XYZ_TO_LMS, Components(value.x, value.y, value.z));
+        let lms = lms.map(|v| v.cbrt());
+        transform(&LMS_TO_OKLAB, lms).into()
     }
 }
 
@@ -196,57 +188,15 @@ impl ToXyz<D65> for Oklab {
              0.28139105017721583, -0.07171106666151701,  1.5869240244272418,
         );
 
-        let [x, y, z] = transform(&OKLAB_TO_LMS, self.lightness, self.a, self.b);
-        let x = x * x * x;
-        let y = y * y * y;
-        let z = z * z * z;
-        let [x, y, z] = transform(&LMS_TO_XYZ, x, y, z);
-
-        Xyz::new(x, y, z, self.alpha)
-    }
-}
-
-impl From<Oklab> for Color {
-    fn from(value: Oklab) -> Self {
-        Color::new(Space::Oklab, value.lightness, value.a, value.b, value.alpha)
+        let lms = transform(&OKLAB_TO_LMS, Components(self.lightness, self.a, self.b));
+        let lms = lms.map(|v| v * v * v);
+        transform(&LMS_TO_XYZ, lms).into()
     }
 }
 
 /// The model for a color specified in the oklab color space with the cylindrical polar form.
 pub type Oklch = Polar<space::Oklab>;
 
-impl From<Oklch> for Color {
-    fn from(value: Oklch) -> Self {
-        Color::new(
-            Space::Oklab,
-            value.lightness,
-            value.chroma,
-            value.hue,
-            value.alpha,
-        )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn as_model() {
-        let color = Color::new(Space::Lab, 0.1, 0.2, 0.3, 0.4);
-        let model = color.as_model::<Lab>();
-        assert_eq!(model.lightness, color.components.0);
-        assert_eq!(model.a, color.components.1);
-        assert_eq!(model.b, color.components.2);
-        assert_eq!(model.alpha, color.alpha);
-        assert_eq!(model.flags, color.flags);
-
-        let color = Color::new(Space::Lch, 0.1, 0.2, 0.3, 0.4);
-        let model = color.as_model::<Lch>();
-        assert_eq!(model.lightness, color.components.0);
-        assert_eq!(model.chroma, color.components.1);
-        assert_eq!(model.hue, color.components.2);
-        assert_eq!(model.alpha, color.alpha);
-        assert_eq!(model.flags, color.flags);
-    }
+impl HasSpace for Oklch {
+    const SPACE: Space = Space::Oklch;
 }

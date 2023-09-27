@@ -2,12 +2,7 @@ use camelion::{Lab, SrgbLinear, ToXyz};
 
 pub fn main() {
     #[allow(clippy::excessive_precision)]
-    let lab = Lab::new(
-        56.629300221279735,
-        39.237080198427755,
-        57.553769167682276,
-        1.0,
-    );
+    let lab = Lab::new(56.629300221279735, 39.237080198427755, 57.553769167682276);
 
     // 0.3373008675302083, 0.2454491947638009, 0.0319588705314679
     let xyz_d50 = lab.to_xyz();
