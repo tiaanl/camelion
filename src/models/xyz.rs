@@ -1,6 +1,6 @@
 //! Model a color in the CIE-XYZ color space.
 
-use crate::{color::HasSpace, Color, Component, Components, Space};
+use crate::color::{Color, Component, Components, HasSpace, Space};
 
 pub trait WhitePoint {
     const WHITE_POINT: Components;
@@ -72,7 +72,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{Color, Space, XyzD50};
+    use super::*;
 
     #[test]
     fn as_model() {

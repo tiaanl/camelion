@@ -1,11 +1,18 @@
 //! Implementations on all the models that has conversions to other models.
 
 use crate::{
+    color::{Color, Components, Space},
     math::{transform, transform_3x3, Transform},
-    rgb::{A98RgbLinear, DisplayP3Linear, ProPhotoRgbLinear, Rec2020Linear},
-    xyz::ToXyz,
-    A98Rgb, Color, Components, DisplayP3, Hsl, Hwb, Lab, Lch, Oklab, Oklch, ProPhotoRgb, Rec2020,
-    Space, Srgb, SrgbLinear, XyzD50, XyzD65,
+    models::{
+        hsl::Hsl,
+        hwb::Hwb,
+        lab::{Lab, Lch, Oklab, Oklch},
+        rgb::{
+            A98Rgb, A98RgbLinear, DisplayP3, DisplayP3Linear, ProPhotoRgb, ProPhotoRgbLinear,
+            Rec2020, Rec2020Linear, Srgb, SrgbLinear,
+        },
+        xyz::{ToXyz, XyzD50, XyzD65},
+    },
 };
 
 impl Color {
@@ -179,7 +186,7 @@ impl XyzD65 {
 }
 
 mod util {
-    use crate::{Component, Components};
+    use crate::color::{Component, Components};
 
     /// Calculate the hue from RGB components and return it along with the min
     /// and max RGB values.
@@ -288,8 +295,7 @@ mod util {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::Component;
+    use crate::color::{Color, Component, Space};
 
     #[test]
     fn test_conversions() {

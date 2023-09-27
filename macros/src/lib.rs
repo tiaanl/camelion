@@ -55,7 +55,7 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
             syn::Field::parse_named
                 .parse2(syn::parse_quote! {
                     /// Holds various flags about the color.
-                    pub flags: crate::Flags
+                    pub flags: crate::color::Flags
                 })
                 .unwrap(),
         );
@@ -103,25 +103,25 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
         impl #impl_gen #struct_name #type_gen {
             /// Create a new color having this color space.
             pub fn new(
-                #field1: impl Into<crate::ComponentDetails>,
-                #field2: impl Into<crate::ComponentDetails>,
-                #field3: impl Into<crate::ComponentDetails>,
-                alpha: impl Into<crate::ComponentDetails>
+                #field1: impl Into<crate::color::ComponentDetails>,
+                #field2: impl Into<crate::color::ComponentDetails>,
+                #field3: impl Into<crate::color::ComponentDetails>,
+                alpha: impl Into<crate::color::ComponentDetails>
             ) -> Self {
-                let mut flags = crate::Flags::empty();
+                let mut flags = crate::color::Flags::empty();
 
                 let #field1 = #field1
                     .into()
-                    .value_and_flag(&mut flags, crate::Flags::C0_IS_NONE);
+                    .value_and_flag(&mut flags, crate::color::Flags::C0_IS_NONE);
                 let #field2 = #field2
                     .into()
-                    .value_and_flag(&mut flags, crate::Flags::C1_IS_NONE);
+                    .value_and_flag(&mut flags, crate::color::Flags::C1_IS_NONE);
                 let #field3 = #field3
                     .into()
-                    .value_and_flag(&mut flags, crate::Flags::C2_IS_NONE);
+                    .value_and_flag(&mut flags, crate::color::Flags::C2_IS_NONE);
                 let alpha = alpha
                     .into()
-                    .value_and_flag(&mut flags, crate::Flags::ALPHA_IS_NONE);
+                    .value_and_flag(&mut flags, crate::color::Flags::ALPHA_IS_NONE);
 
                 Self {
                     #field1,

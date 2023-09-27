@@ -1,7 +1,7 @@
 use crate::{
+    color::{Color, Component, Components, Space},
     math::{transform, transform_3x3, Transform},
-    xyz::{WhitePoint, Xyz},
-    Color, Component, Components, Space, ToXyz, XyzD50, XyzD65, D50, D65,
+    models::xyz::{ToXyz, WhitePoint, Xyz, XyzD50, XyzD65, D50, D65},
 };
 
 mod space {
@@ -229,7 +229,7 @@ impl From<Oklch> for Color {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Color, Lab, Lch, Space};
+    use super::*;
 
     #[test]
     fn as_model() {

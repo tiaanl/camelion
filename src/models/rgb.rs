@@ -1,14 +1,15 @@
 //! Model a color in the sRGB color space.
 
 use crate::{
-    color::HasSpace,
+    color::{Color, Component, Components, HasSpace, Space},
     math::{transform, transform_3x3, Transform},
-    xyz::{ToXyz, Xyz},
-    Color, Component, Components, Space, XyzD50, XyzD65, D50, D65,
+    models::xyz::{ToXyz, XyzD50, XyzD65, D50, D65},
 };
 
+use super::xyz::Xyz;
+
 mod encoding {
-    use crate::Components;
+    use crate::color::Components;
 
     /// This trait is used to identity tags that specify gamma encoding.
     pub trait Encoding {}
@@ -28,7 +29,7 @@ mod encoding {
 }
 
 mod space {
-    use crate::{Component, Components};
+    use crate::color::{Component, Components};
 
     use super::encoding::GammaConversion;
 
@@ -415,7 +416,7 @@ impl From<XyzD65> for Rec2020Linear {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Color, DisplayP3, Space};
+    use super::*;
 
     #[test]
     fn as_model() {

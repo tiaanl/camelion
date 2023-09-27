@@ -1,14 +1,12 @@
 //! Math utility functions.
 
-use std::marker::PhantomData;
-
+use crate::color::Component;
 use euclid::default::{Transform3D, Vector3D};
+use std::marker::PhantomData;
 
 pub type Transform = Transform3D<Component>;
 
 type Vector = Vector3D<Component>;
-
-use crate::Component;
 
 /// Multiply the given matrix in `transform` with the 3 components.
 pub fn transform(

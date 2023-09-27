@@ -1,4 +1,4 @@
-use crate::{Color, Component, Flags, Space};
+use crate::color::{Color, Component, Flags, Space};
 
 impl Color {
     /// Create an interpolation that will interpolate from `self` to `other` using the specified [`Space`](color space).

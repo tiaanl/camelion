@@ -22,31 +22,24 @@
 
 mod color;
 mod convert;
-mod hsl;
-mod hwb;
 mod interpolate;
-mod lab;
 mod math;
-mod rgb;
-mod xyz;
+mod models;
 
-pub use color::{Color, ComponentDetails, Components, Flags, Space};
-pub use hsl::Hsl;
-pub use hwb::Hwb;
-pub use interpolate::HueInterpolationMethod;
-pub use lab::{Lab, Lch, Oklab, Oklch};
-pub use rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
-pub use xyz::{ToXyz, XyzD50, XyzD65, D50, D65};
+// Most common color types.
+pub use color::{Color, Component, ComponentDetails, Components, Flags, Space};
 
-/// Most common types used while working with a camelion [`Color`].
-pub mod prelude {
-    pub use super::{Color, Component, Space};
-}
+// Each of the valid CSS color spaces and forms.
+pub use models::hsl::Hsl;
+pub use models::hwb::Hwb;
+pub use models::lab::{Lab, Lch, Oklab, Oklch};
+pub use models::rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
+pub use models::xyz::{XyzD50, XyzD65};
 
-#[cfg(not(feature = "f64"))]
-/// A 32-bit floating point value that all components are stored as.
-pub type Component = f32;
+// Trait for converting to CIE-XYZ.
+pub use models::xyz::ToXyz;
 
-#[cfg(feature = "f64")]
-/// A 64-bit floating point value that all components are stored as.
-pub type Component = f64;
+// /// Most common types used while working with a camelion [`Color`].
+// pub mod prelude {
+//     pub use super::{Color, Component, Space};
+// }

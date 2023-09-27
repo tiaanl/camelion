@@ -1,6 +1,6 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::{color::HasSpace, Color, Component, Components, Flags, Space};
+use crate::color::{Color, Component, Components, Flags, HasSpace, Space};
 
 camelion_macros::gen_model! {
     /// A color specified with the HSL notation in the sRGB color space.
@@ -41,7 +41,7 @@ impl From<Hsl> for Color {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Color, Hsl, Space};
+    use super::*;
 
     #[test]
     fn as_model() {
@@ -53,16 +53,4 @@ mod tests {
         assert_eq!(model.alpha, color.alpha);
         assert_eq!(model.flags, color.flags);
     }
-
-    // #[test]
-    // fn p() {
-    //     let _hsl2 = super::Hsl2 {
-    //         hue: 0.0,
-    //         saturation: 0.0,
-    //         lightness: 0.0,
-    //         alpha: 0.0,
-    //         flags: Flags::empty(),
-    //         _space: Default::default(),
-    //     };
-    // }
 }

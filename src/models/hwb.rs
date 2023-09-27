@@ -1,6 +1,6 @@
 //! Model a color with the HWB notation in the sRGB color space.
 
-use crate::{color::HasSpace, Color, Component, Components, Space};
+use crate::color::{Color, Component, Components, HasSpace, Space};
 
 camelion_macros::gen_model! {
     /// A color specified with the HWB notation in the sRGB color space.
@@ -31,7 +31,7 @@ impl From<Hwb> for Color {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Color, Hwb, Space};
+    use super::*;
 
     #[test]
     fn as_model() {

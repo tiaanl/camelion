@@ -1,4 +1,4 @@
-use camelion::prelude::*;
+use camelion::{Color, Space};
 
 fn main() {
     let left = Color::new(Space::Srgb, 1.0, 0.0, 0.0, 1.0);
