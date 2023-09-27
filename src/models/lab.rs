@@ -1,3 +1,6 @@
+//! Models for rectangular and polar coordinate systems used to model CIE-Lab,
+//! CIE-Lch, Oklab and Oklch.
+
 use crate::{
     color::{Component, Components, HasSpace, Space},
     math::{transform, transform_3x3, Transform},
@@ -29,6 +32,8 @@ camelion_macros::gen_model! {
 }
 
 impl<S: space::Space> Rectangular<S> {
+    /// Convert this orthogonal rectangular model into its cylindrical polar
+    /// form.
     pub fn to_polar(&self) -> Polar<S> {
         let hue = self.b.atan2(self.a).to_degrees().rem_euclid(360.0);
         let chroma = (self.a * self.a + self.b * self.b).sqrt();
@@ -40,13 +45,18 @@ impl<S: space::Space> Rectangular<S> {
 camelion_macros::gen_model! {
     /// The model for a color specified in the cylindrical polar form.
     pub struct Polar<S: space::Space> {
+        /// The lightness component.
         pub lightness: Component,
+        /// The chroma component.
         pub chroma: Component,
+        /// The hue component.
         pub hue: Component,
     }
 }
 
 impl<S: space::Space> Polar<S> {
+    /// Convert this cylindrical polar model into its orthogonal rectangular
+    /// form.
     pub fn to_rectangular(&self) -> Rectangular<S> {
         let hue = self.hue.to_radians();
         let a = self.chroma * hue.cos();

@@ -4,15 +4,9 @@ use crate::{
     color::{Color, Components, Space},
     math::{transform, transform_3x3, Transform},
     models::{
-        hsl::Hsl,
-        hwb::Hwb,
-        lab::{Lab, Lch, Oklab, Oklch},
-        rgb::{
-            A98Rgb, A98RgbLinear, DisplayP3, DisplayP3Linear, ProPhotoRgb, ProPhotoRgbLinear,
-            Rec2020, Rec2020Linear, Srgb, SrgbLinear,
-        },
-        xyz::{ToXyz, XyzD50, XyzD65},
-        Model,
+        A98Rgb, A98RgbLinear, DisplayP3, DisplayP3Linear, Hsl, Hwb, Lab, Lch, Model, Oklab, Oklch,
+        ProPhotoRgb, ProPhotoRgbLinear, Rec2020, Rec2020Linear, Srgb, SrgbLinear, ToXyz, XyzD50,
+        XyzD65,
     },
 };
 
@@ -179,6 +173,8 @@ impl Hwb {
 }
 
 impl XyzD50 {
+    /// Convert this model from CIE-XYZ with a D50 white point to a D65 white
+    /// point.
     pub fn to_xyz_d65(&self) -> XyzD65 {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
@@ -193,6 +189,8 @@ impl XyzD50 {
 }
 
 impl XyzD65 {
+    /// Convert this model from CIE-XYZ with a D65 white point to a D50 white
+    /// point.
     pub fn to_xyz_d50(&self) -> XyzD50 {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]

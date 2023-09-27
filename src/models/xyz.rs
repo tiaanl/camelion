@@ -2,7 +2,10 @@
 
 use crate::color::{Component, Components, HasSpace, Space};
 
+/// This trait is used for types that represent a CIE-XYZ white point
+/// reference.
 pub trait WhitePoint {
+    /// The reference coordinates for the white point.
     const WHITE_POINT: Components;
 }
 

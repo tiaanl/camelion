@@ -189,6 +189,7 @@ camelion_macros::gen_model! {
 }
 
 impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded> {
+    /// Convert this model from gamma encoded to linear light.
     pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
         let Components(red, green, blue) =
             S::to_linear_light(&Components(self.red, self.green, self.blue));
@@ -197,6 +198,7 @@ impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded>
 }
 
 impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::LinearLight> {
+    /// Convert this model from linear light to gamma encoded.
     pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
         let Components(red, green, blue) =
             S::to_gamma_encoded(&Components(self.red, self.green, self.blue));
@@ -246,8 +248,10 @@ impl HasSpace for SrgbLinear {
     const SPACE: Space = Space::SrgbLinear;
 }
 
-/// Model for a color in the DisplayP3 color space with gamme encoding.
+/// Model for a color in the DisplayP3 color space with gamma encoding.
 pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
+
+/// Model for a color in the DisplayP3 color space without gamma encoding.
 pub type DisplayP3Linear = Rgb<space::DisplayP3, encoding::LinearLight>;
 
 impl HasSpace for DisplayP3 {
@@ -284,6 +288,8 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
 
 /// Model for a color in the a98 RGB color space with gamma encoding.
 pub type A98Rgb = Rgb<space::A98Rgb, encoding::GammaEncoded>;
+
+/// Model for a color in the a98 RGB color space without gamma encoding.
 pub type A98RgbLinear = Rgb<space::A98Rgb, encoding::LinearLight>;
 
 impl HasSpace for A98Rgb {
@@ -320,6 +326,8 @@ impl From<XyzD65> for A98RgbLinear {
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
 pub type ProPhotoRgb = Rgb<space::ProPhotoRgb, encoding::GammaEncoded>;
+
+/// Model for a color in the ProPhoto RGB color space without gamma encoding.
 pub type ProPhotoRgbLinear = Rgb<space::ProPhotoRgb, encoding::LinearLight>;
 
 impl HasSpace for ProPhotoRgb {
@@ -356,6 +364,8 @@ impl From<XyzD50> for ProPhotoRgbLinear {
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
 pub type Rec2020 = Rgb<space::Rec2020, encoding::GammaEncoded>;
+
+/// Model for a color in the ProPhoto RGB color space without gamma encoding.
 pub type Rec2020Linear = Rgb<space::Rec2020, encoding::LinearLight>;
 
 impl HasSpace for Rec2020 {

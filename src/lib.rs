@@ -24,22 +24,9 @@ mod color;
 mod convert;
 mod interpolate;
 mod math;
-mod models;
+
+// All the models can be accessed through the module.
+pub mod models;
 
 // Most common color types.
 pub use color::{Color, Component, ComponentDetails, Components, Flags, Space};
-
-// Each of the valid CSS color spaces and forms.
-pub use models::hsl::Hsl;
-pub use models::hwb::Hwb;
-pub use models::lab::{Lab, Lch, Oklab, Oklch};
-pub use models::rgb::{A98Rgb, DisplayP3, ProPhotoRgb, Rec2020, Srgb, SrgbLinear};
-pub use models::xyz::{XyzD50, XyzD65};
-
-// Trait for converting to CIE-XYZ.
-pub use models::xyz::ToXyz;
-
-// /// Most common types used while working with a camelion [`Color`].
-// pub mod prelude {
-//     pub use super::{Color, Component, Space};
-// }

@@ -1,4 +1,4 @@
-use camelion::{Lab, SrgbLinear, ToXyz};
+use camelion::models::{Lab, SrgbLinear, ToXyz};
 
 pub fn main() {
     #[allow(clippy::excessive_precision)]
