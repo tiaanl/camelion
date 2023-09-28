@@ -155,6 +155,7 @@ impl From<Color> for Premultiplied {
     }
 }
 
+/// Represents an interpolation between two colors using a specified color space.
 #[derive(Clone)]
 pub struct Interpolation {
     left: Premultiplied,
@@ -164,6 +165,7 @@ pub struct Interpolation {
 }
 
 impl Interpolation {
+    /// Create a new interpolation with the given colors and color space.
     pub fn new(left: &Color, right: &Color, space: Space) -> Self {
         let mut left = left.to_space(space);
         let mut right = right.to_space(space);
@@ -188,6 +190,7 @@ impl Interpolation {
         }
     }
 
+    /// Set the hue interpolation method on the [`Interpolation`].
     pub fn with_hue_interpolation(self, hue_interpolation_method: HueInterpolationMethod) -> Self {
         Self {
             hue_interpolation_method,
@@ -195,6 +198,8 @@ impl Interpolation {
         }
     }
 
+    /// Calculate an interpolated color using weights for the left and right
+    /// sides.
     pub fn with_weights(&self, left: Component, right: Component) -> Color {
         // <https://drafts.csswg.org/css-color-5/#color-mix-percent-norm>
         let (t, alpha_multiplier) = {
@@ -217,6 +222,7 @@ impl Interpolation {
         result
     }
 
+    /// Calculate an interpolated color using a mid point specified by `t`.
     pub fn at(&self, t: Component) -> Color {
         // println!("left: {:?}", left);
         // println!("right: {:?}", right);

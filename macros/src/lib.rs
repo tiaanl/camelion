@@ -87,6 +87,11 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
                 #(#phantom_fields: std::marker::PhantomData,)*
             }
         }
+
+        /// Convert this model into generic components.
+        pub fn into_components(self) -> crate::color::Components {
+            crate::color::Components(self.#field1, self.#field2, self.#field3)
+        }
     }
 
     impl #impl_gen From<crate::color::Components> for #struct_name #type_gen {
@@ -105,8 +110,6 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
             }
         }
     };
-
-    // TODO: Generate tests to check if the model has the same layout as Color.
 
     quote! {
         #input

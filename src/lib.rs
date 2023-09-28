@@ -30,3 +30,6 @@ pub mod models;
 
 // Most common color types.
 pub use color::{Color, Component, ComponentDetails, Components, Flags, Space};
+
+// Color interpolation types.
+pub use interpolate::{HueInterpolationMethod, Interpolation};
