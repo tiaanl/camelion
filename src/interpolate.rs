@@ -158,10 +158,15 @@ impl From<Color> for Premultiplied {
 /// Represents an interpolation between two colors using a specified color space.
 #[derive(Clone)]
 pub struct Interpolation {
+    /// The color that will be interpolated from.
     left: Premultiplied,
+    /// The color that will be interpolated to.
     right: Premultiplied,
-    space: Space,
-    hue_interpolation_method: HueInterpolationMethod,
+    /// The color space/form used to interpolate between the two colors.
+    pub space: Space,
+    /// Which hue interpolation method to use when a hue component is present
+    /// in the color space/from used for interpolation.
+    pub hue_interpolation_method: HueInterpolationMethod,
 }
 
 impl Interpolation {
@@ -224,9 +229,6 @@ impl Interpolation {
 
     /// Calculate an interpolated color using a mid point specified by `t`.
     pub fn at(&self, t: Component) -> Color {
-        // println!("left: {:?}", left);
-        // println!("right: {:?}", right);
-
         // Interpolate the original alpha components.
         // TODO: This is essentially the same code used for each component,
         // can we somehow not duplicate it here.
@@ -256,8 +258,6 @@ impl Interpolation {
                 }),
             };
         });
-
-        // println!("premultiplied result: {:?}", result);
 
         result.into_color(self.space, alpha)
     }
@@ -502,7 +502,11 @@ mod tests {
         let interp = left.interpolate(&right, Space::Hsl);
 
         let shorter = interp.clone().with_hue_interpolation(H::Shorter);
+        assert_component_eq!(shorter.at(0.0).components.0, 50.0);
+        assert_component_eq!(shorter.at(0.25).components.0, 30.0);
         assert_component_eq!(shorter.at(0.5).components.0, 10.0);
+        assert_component_eq!(shorter.at(0.75).components.0, 350.0);
+        assert_component_eq!(shorter.at(1.0).components.0, 330.0);
 
         let longer = interp.clone().with_hue_interpolation(H::Longer);
         assert_component_eq!(longer.at(0.5).components.0, 190.0);

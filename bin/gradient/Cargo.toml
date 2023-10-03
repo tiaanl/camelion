@@ -1,0 +1,10 @@
+[package]
+name = "camelion-gradient"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+camelion = { path = "../../" }
+image = "0.24"
+imageproc = "0.23"
+rusttype = "0.9"
