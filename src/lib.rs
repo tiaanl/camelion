@@ -22,6 +22,7 @@
 
 mod color;
 mod convert;
+mod gamut;
 mod interpolate;
 mod math;
 
