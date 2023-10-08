@@ -255,34 +255,28 @@ mod util {
     /// Convert from HSL notation to RGB notation.
     /// <https://drafts.csswg.org/css-color-4/#hsl-to-rgb>
     pub fn hsl_to_rgb(from: &Components) -> Components {
-        fn hue_to_rgb(t1: Component, t2: Component, hue: Component) -> Component {
-            let hue = hue.rem_euclid(360.0);
+        let saturation = if from.1.is_nan() { 0.0 } else { from.1 };
+        let lightness = if from.2.is_nan() { 0.0 } else { from.2 };
 
-            if hue * 6.0 < 360.0 {
-                t1 + (t2 - t1) * hue / 60.0
-            } else if hue * 2.0 < 360.0 {
-                t2
-            } else if hue * 3.0 < 720.0 {
-                t1 + (t2 - t1) * (240.0 - hue) / 60.0
-            } else {
-                t1
-            }
+        if saturation <= 0.0 {
+            return Components(lightness, lightness, lightness);
         }
 
-        let Components(hue, saturation, lightness) = *from;
-
-        let t2 = if lightness <= 0.5 {
-            lightness * (saturation + 1.0)
+        let hue = if from.0.is_nan() {
+            0.0
         } else {
-            lightness + saturation - lightness * saturation
+            from.0.rem_euclid(360.0)
         };
-        let t1 = lightness * 2.0 - t2;
 
-        Components(
-            hue_to_rgb(t1, t2, hue + 120.0),
-            hue_to_rgb(t1, t2, hue),
-            hue_to_rgb(t1, t2, hue - 120.0),
-        )
+        macro_rules! f {
+            ($n:expr) => {{
+                let k = ($n + hue / 30.0) % 12.0;
+                let a = saturation * lightness.min(1.0 - lightness);
+                lightness - a * (k - 3.0).min(9.0 - k).clamp(-1.0, 1.0)
+            }};
+        }
+
+        Components(f!(0.0), f!(8.0), f!(4.0))
     }
 
     /// Convert from RGB notation to HWB notation.
@@ -552,18 +546,5 @@ mod tests {
         assert!(Srgb::new(1.0, 1.0, 1.0).to_hsl().hue.is_nan());
         assert!(Srgb::new(0.0, 0.0, 0.0).to_hsl().hue.is_nan());
         assert!(Srgb::new(0.5, 0.5, 0.5).to_hsl().hue.is_nan());
-    }
-
-    #[test]
-    fn hsl_with_missing_components_to_srgb() {
-        let hsl = Hsl::new(Component::NAN, Component::NAN, Component::NAN);
-        let srgb = hsl.to_srgb();
-        assert!(srgb.red.is_nan());
-        assert!(srgb.green.is_nan());
-        assert!(srgb.blue.is_nan());
-        let c = srgb.to_color(None);
-        assert!(c.c0().is_none());
-        assert!(c.c1().is_none());
-        assert!(c.c2().is_none());
     }
 }
