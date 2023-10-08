@@ -1,4 +1,22 @@
-//! Implementations on all the models that has conversions to other models.
+//! Each color space/form is modeled with its own type. Conversions are only
+//! implemented on relevant models, making conversion paths accurate and
+//! performant.
+//!
+//! Conversions only operate on the 3 color components (no alpha, missing
+//! components).
+//!
+//! NOTE: When a conversion yields a NaN value, the component is powerless.
+//!
+//! ```rust
+//! use camelion::models::{Lab, Srgb, ToXyz};
+//! let blue_on_lch = Lab::from(    // create color in lab.
+//!     Srgb::new(0.0, 0.0, 1.0)
+//!         .to_linear_light()      // convert to srgb-linear.
+//!         .to_xyz()               // convert to xyz-d65.
+//!         .transfer(),            // convert to xyz-d50.
+//! )
+//! .to_polar();                    // convert to lch.
+//! ```
 
 use crate::{
     color::{Color, Components, Space},
@@ -174,38 +192,6 @@ impl Hwb {
         util::hwb_to_rgb(&Components(self.hue, self.whiteness, self.blackness)).into()
     }
 }
-
-// impl XyzD50 {
-//     /// Convert this model from CIE-XYZ with a D50 white point to a D65 white
-//     /// point.
-//     pub fn to_xyz_d65(&self) -> XyzD65 {
-//         #[rustfmt::skip]
-//         #[allow(clippy::excessive_precision)]
-//         const MAT: Transform = transform_3x3(
-//              0.9554734527042182,   -0.028369706963208136,  0.012314001688319899,
-//             -0.023098536874261423,  1.0099954580058226,   -0.020507696433477912,
-//              0.0632593086610217,    0.021041398966943008,  1.3303659366080753,
-//         );
-
-//         transform(&MAT, Components(self.x, self.y, self.z)).into()
-//     }
-// }
-
-// impl XyzD65 {
-//     /// Convert this model from CIE-XYZ with a D65 white point to a D50 white
-//     /// point.
-//     pub fn to_xyz_d50(&self) -> XyzD50 {
-//         #[rustfmt::skip]
-//         #[allow(clippy::excessive_precision)]
-//         const MAT: Transform = transform_3x3(
-//              1.0479298208405488,    0.029627815688159344, -0.009243058152591178,
-//              0.022946793341019088,  0.990434484573249,     0.015055144896577895,
-//             -0.05019222954313557,  -0.01707382502938514,   0.7518742899580008,
-//         );
-
-//         transform(&MAT, Components(self.x, self.y, self.z)).into()
-//     }
-// }
 
 mod util {
     use crate::color::{Component, Components};

@@ -629,5 +629,19 @@ mod tests {
         assert_component_eq!(result.components.1, 0.4);
         assert_component_eq!(result.components.2, 0.28);
         assert_component_eq!(result.alpha, 0.5);
+
+        // // color-mix(in hsl, hsl(none none none), hsl(none none none))
+        // let left = Color::new(Space::Hsl, None, None, None, 1.0);
+        // let right = Color::new(Space::Hsl, None, None, None, 1.0);
+        // let interp = Interpolation::new(&left, &right, Space::Hsl);
+        // let result = interp.at(0.5);
+        // assert!(result.c0().is_none());
+        // assert!(result.c1().is_none());
+        // assert!(result.c2().is_none());
+
+        // let srgb = result.to_space(Space::Srgb);
+        // assert!(srgb.c0().is_none());
+        // assert!(srgb.c1().is_none());
+        // assert!(srgb.c2().is_none());
     }
 }
