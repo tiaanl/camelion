@@ -5,7 +5,10 @@
 //! Conversions only operate on the 3 color components (no alpha, missing
 //! components).
 //!
-//! NOTE: When a conversion yields a NaN value, the component is powerless.
+//! NOTE: When a conversion yields a NaN value, the component is powerless and
+//!       should be treated as missing.
+//! NOTE: The reverse is not the same. Passing a value of NaN to a model will
+//!       convert the value to 0.0.
 //!
 //! ```rust
 //! use camelion::models::{Lab, Srgb, ToXyz};

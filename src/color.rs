@@ -182,7 +182,10 @@ impl Color {
 
     /// Return a reference to this color types as the given model.
     pub fn as_model<T: Model + From<Components>>(&self) -> T {
-        self.components.into()
+        // Models treat NaN as zero (0.0).
+        self.components
+            .map(|c| if c.is_nan() { 0.0 } else { c })
+            .into()
     }
 }
 
@@ -272,5 +275,20 @@ mod tests {
         let cd = ComponentDetails::from(Some(Component::NAN));
         assert!(cd.value.is_nan());
         assert!(!cd.is_none);
+    }
+
+    #[test]
+    fn models_use_zero_not_nan() {
+        let c = Color::new(
+            Space::Oklch,
+            Component::NAN,
+            Component::NAN,
+            Component::NAN,
+            1.0,
+        );
+        let model = c.as_model::<crate::models::Oklch>();
+        assert_eq!(model.lightness, 0.0);
+        assert_eq!(model.chroma, 0.0);
+        assert_eq!(model.hue, 0.0);
     }
 }
