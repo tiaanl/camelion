@@ -20,5 +20,5 @@ pub use xyz::*;
 /// generic [`Color`].
 pub trait Model {
     /// Convert a model to a generic [`Color`].
-    fn to_color(&self, alpha: Component) -> Color;
+    fn to_color(&self, alpha: Option<Component>) -> Color;
 }

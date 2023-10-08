@@ -73,40 +73,42 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
     let (impl_gen, type_gen, _) = input.generics.split_for_impl();
 
     let new_impl = quote! {
-    impl #impl_gen #struct_name #type_gen {
-        /// Create a new color having this color space.
-        pub fn new(
-            #field1: crate::color::Component,
-            #field2: crate::color::Component,
-            #field3: crate::color::Component,
-        ) -> Self {
-            Self {
-                #field1,
-                #field2,
-                #field3,
-                #(#phantom_fields: std::marker::PhantomData,)*
+        impl #impl_gen #struct_name #type_gen {
+            /// Create a new color having this color space.
+            pub fn new(
+                #field1: crate::color::Component,
+                #field2: crate::color::Component,
+                #field3: crate::color::Component,
+            ) -> Self {
+                Self {
+                    #field1,
+                    #field2,
+                    #field3,
+                    #(#phantom_fields: std::marker::PhantomData,)*
+                }
+            }
+
+            /// Convert this model into generic components.
+            pub fn into_components(self) -> crate::color::Components {
+                crate::color::Components(self.#field1, self.#field2, self.#field3)
             }
         }
 
-        /// Convert this model into generic components.
-        pub fn into_components(self) -> crate::color::Components {
-            crate::color::Components(self.#field1, self.#field2, self.#field3)
+        impl #impl_gen From<crate::color::Components> for #struct_name #type_gen {
+            fn from(value: crate::color::Components) -> Self {
+                Self::new(value.0, value.1, value.2)
+            }
         }
-    }
 
-    impl #impl_gen From<crate::color::Components> for #struct_name #type_gen {
-        fn from(value: crate::color::Components) -> Self {
-            Self::new(value.0, value.1, value.2)
-        }
-    }
-
-    impl #impl_gen crate::models::Model for #struct_name #type_gen where Self: crate::color::HasSpace {
-        fn to_color(&self, alpha: crate::color::Component) -> crate::color::Color {
-            crate::color::Color::new(<Self as crate::color::HasSpace>::SPACE,
-                if self.#field1.is_nan() { None } else { Some(self.#field1) },
-                if self.#field2.is_nan() { None } else { Some(self.#field2) },
-                if self.#field3.is_nan() { None } else { Some(self.#field3) },
-                alpha)
+        impl #impl_gen crate::models::Model for #struct_name #type_gen where Self: crate::color::HasSpace {
+            fn to_color(&self, alpha: Option<crate::color::Component>) -> crate::color::Color {
+                crate::color::Color::new(
+                    <Self as crate::color::HasSpace>::SPACE,
+                    if self.#field1.is_nan() { None } else { Some(self.#field1) },
+                    if self.#field2.is_nan() { None } else { Some(self.#field2) },
+                    if self.#field3.is_nan() { None } else { Some(self.#field3) },
+                    alpha
+                )
             }
         }
     };

@@ -399,3 +399,19 @@ impl From<XyzD65> for Rec2020Linear {
         transform(&FROM_XYZ, Components(value.x, value.y, value.z)).into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::Model;
+    use crate::Flags;
+
+    #[test]
+    fn nan_is_missing_component() {
+        let c = Srgb::new(Component::NAN, 1.0, 1.0).to_color(Some(1.0));
+        assert_eq!(c.components.0, 0.0);
+        assert_eq!(c.components.1, 1.0);
+        assert_eq!(c.components.2, 1.0);
+        assert_eq!(c.flags, Flags::C0_IS_NONE);
+    }
+}

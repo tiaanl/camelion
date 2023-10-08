@@ -17,3 +17,18 @@ camelion_macros::gen_model! {
 impl HasSpace for Hsl {
     const SPACE: Space = Space::Hsl;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{models::Model, Flags};
+
+    #[test]
+    fn nan_components_are_missing() {
+        let c = Hsl::new(Component::NAN, Component::NAN, Component::NAN).to_color(None);
+        assert_eq!(
+            c.flags,
+            Flags::C0_IS_NONE | Flags::C1_IS_NONE | Flags::C2_IS_NONE | Flags::ALPHA_IS_NONE
+        );
+    }
+}
