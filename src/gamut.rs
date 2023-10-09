@@ -24,7 +24,10 @@ impl Color {
     pub fn map_into_gamut_range(&self) -> Self {
         // 1. if destination has no gamut limits (XYZ-D65, XYZ-D50, Lab, LCH,
         //    Oklab, Oklch) return origin.
-        if self.in_gamut() {
+        if matches!(
+            self.space,
+            Space::Lab | Space::Lch | Space::Oklab | Space::Oklch | Space::XyzD50 | Space::XyzD65
+        ) {
             return self.clone();
         }
 
@@ -123,17 +126,23 @@ impl Color {
                 min = chroma;
             } else {
                 // 14.4.4. otherwise, set max to chroma and continue to repeat
-                //    these steps
+                //         these steps
                 max = chroma;
             }
         }
 
-        todo!()
-
         // 15. return current as the gamut mapped color current
+        {
+            // TODO: This point is NEVER reached, why?
+            let mut r = origin_oklch.clone();
+            r.components.1 = (min + max) / 2.0;
+            r
+        }
     }
 
-    fn clip(&self) -> Color {
+    /// Return a color with each of the components clipped (clamped to [0..1]).
+    /// NOTE: This is a lossy operation.
+    pub fn clip(&self) -> Color {
         Color::new(
             self.space,
             self.components.0.clamp(0.0, 1.0),
@@ -143,7 +152,11 @@ impl Color {
         )
     }
 
-    fn in_gamut(&self) -> bool {
+    /// Returns true if the color is within its gamut limits.
+    ///
+    /// Mainly for RGB based colors, checking components to be inside [0..1].
+    /// `Hsl` and `Hwb` are converted to [`Space::Srgb`] before being checked.
+    pub fn in_gamut(&self) -> bool {
         match self.space {
             Space::Srgb
             | Space::SrgbLinear
@@ -161,10 +174,7 @@ impl Color {
             | Space::Oklab
             | Space::Oklch
             | Space::XyzD50
-            | Space::XyzD65 => {
-                // TODO: Should this be unreachable? Seems a bit unnescessary.
-                unreachable!()
-            }
+            | Space::XyzD65 => true,
         }
     }
 }
