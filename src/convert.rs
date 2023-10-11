@@ -46,51 +46,43 @@ impl Color {
                 return self
                     .as_model::<Srgb>()
                     .to_linear_light()
-                    .to_color(Some(self.alpha))
+                    .to_color(self.alpha())
             }
             (S::SrgbLinear, S::Srgb) => {
                 return self
                     .as_model::<SrgbLinear>()
                     .to_gamma_encoded()
-                    .to_color(Some(self.alpha))
+                    .to_color(self.alpha())
             }
-            (S::Srgb, S::Hsl) => {
-                return self.as_model::<Srgb>().to_hsl().to_color(Some(self.alpha))
-            }
-            (S::Hsl, S::Srgb) => {
-                return self.as_model::<Hsl>().to_srgb().to_color(Some(self.alpha))
-            }
-            (S::Srgb, S::Hwb) => {
-                return self.as_model::<Srgb>().to_hwb().to_color(Some(self.alpha))
-            }
-            (S::Hwb, S::Srgb) => {
-                return self.as_model::<Hwb>().to_srgb().to_color(Some(self.alpha))
-            }
+            (S::Srgb, S::Hsl) => return self.as_model::<Srgb>().to_hsl().to_color(self.alpha()),
+            (S::Hsl, S::Srgb) => return self.as_model::<Hsl>().to_srgb().to_color(self.alpha()),
+            (S::Srgb, S::Hwb) => return self.as_model::<Srgb>().to_hwb().to_color(self.alpha()),
+            (S::Hwb, S::Srgb) => return self.as_model::<Hwb>().to_srgb().to_color(self.alpha()),
             (S::XyzD50, S::XyzD65) => {
                 return self
                     .as_model::<XyzD50>()
                     .transfer::<D65>()
-                    .to_color(Some(self.alpha));
+                    .to_color(self.alpha());
             }
             (S::XyzD65, S::XyzD50) => {
                 return self
                     .as_model::<XyzD65>()
                     .transfer::<D50>()
-                    .to_color(Some(self.alpha))
+                    .to_color(self.alpha())
             }
             (S::Hsl, S::Hwb) => {
                 return self
                     .as_model::<Hsl>()
                     .to_srgb()
                     .to_hwb()
-                    .to_color(Some(self.alpha))
+                    .to_color(self.alpha())
             }
             (S::Hwb, S::Hsl) => {
                 return self
                     .as_model::<Hwb>()
                     .to_srgb()
                     .to_hsl()
-                    .to_color(Some(self.alpha))
+                    .to_color(self.alpha())
             }
             _ => {}
         }
@@ -146,36 +138,36 @@ impl Color {
         match space {
             S::Srgb => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
-                .to_color(Some(self.alpha)),
-            S::SrgbLinear => SrgbLinear::from(xyz.transfer()).to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
+            S::SrgbLinear => SrgbLinear::from(xyz.transfer()).to_color(self.alpha()),
             S::Hsl => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_hsl()
-                .to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
             S::Hwb => SrgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
                 .to_hwb()
-                .to_color(Some(self.alpha)),
-            S::Lab => Lab::from(xyz).to_color(Some(self.alpha)),
-            S::Lch => Lab::from(xyz).to_polar().to_color(Some(self.alpha)),
-            S::Oklab => Oklab::from(xyz.transfer()).to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
+            S::Lab => Lab::from(xyz).to_color(self.alpha()),
+            S::Lch => Lab::from(xyz).to_polar().to_color(self.alpha()),
+            S::Oklab => Oklab::from(xyz.transfer()).to_color(self.alpha()),
             S::Oklch => Oklab::from(xyz.transfer())
                 .to_polar()
-                .to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
             S::DisplayP3 => DisplayP3Linear::from(xyz.transfer())
                 .to_gamma_encoded()
-                .to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
             S::A98Rgb => A98RgbLinear::from(xyz.transfer())
                 .to_gamma_encoded()
-                .to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
             S::ProPhotoRgb => ProPhotoRgbLinear::from(xyz)
                 .to_gamma_encoded()
-                .to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
             S::Rec2020 => Rec2020Linear::from(xyz.transfer())
                 .to_gamma_encoded()
-                .to_color(Some(self.alpha)),
-            S::XyzD50 => xyz.to_color(Some(self.alpha)),
-            S::XyzD65 => xyz.transfer::<D65>().to_color(Some(self.alpha)),
+                .to_color(self.alpha()),
+            S::XyzD50 => xyz.to_color(self.alpha()),
+            S::XyzD65 => xyz.transfer::<D65>().to_color(self.alpha()),
         }
     }
 }
@@ -298,7 +290,7 @@ mod util {
     pub fn hwb_to_rgb(from: &Components) -> Components {
         let Components(hue, whiteness, blackness) = *from;
 
-        if whiteness + blackness > 1.0 {
+        if whiteness + blackness >= 1.0 {
             let gray = whiteness / (whiteness + blackness);
             return Components(gray, gray, gray);
         }
@@ -549,5 +541,34 @@ mod tests {
         assert!(Srgb::new(1.0, 1.0, 1.0).to_hsl().hue.is_nan());
         assert!(Srgb::new(0.0, 0.0, 0.0).to_hsl().hue.is_nan());
         assert!(Srgb::new(0.5, 0.5, 0.5).to_hsl().hue.is_nan());
+    }
+
+    #[test]
+    fn hwb_to_rgb() {
+        // hwb(40deg 30% 40%)
+        let hwb = Color::new(Space::Hwb, 40.0, 0.3, 0.4, 1.0);
+        // rgb(153, 128, 77)
+        let srgb = hwb.to_space(Space::Srgb);
+        assert_eq!((srgb.components.0 * 255.0).round() as u8, 153);
+        assert_eq!((srgb.components.1 * 255.0).round() as u8, 128);
+        assert_eq!((srgb.components.2 * 255.0).round() as u8, 77);
+    }
+
+    #[test]
+    fn converting_a_color_should_maintain_source_alpha() {
+        let hsl = Color::new(Space::Hsl, 120.0, 0.4, 0.4, None);
+        let srgb = hsl.to_space(Space::Srgb);
+        assert!(srgb.alpha().is_none());
+    }
+
+    #[test]
+    fn alpha_is_clamped_after_conversion() {
+        // color-mix(in srgb, color(srgb 2 3 4 / 5), color(srgb 4 6 8 / 10))
+        let left = Color::new(Space::Srgb, 2.0, 3.0, 4.0, 5.0);
+        let right = Color::new(Space::Srgb, 4.0, 6.0, 8.0, 10.0);
+        let interp = left.interpolate(&right, Space::Srgb);
+        let result = interp.at(0.5);
+        // color(srgb 3 4.5 6)
+        assert_eq!(result.alpha(), Some(1.0));
     }
 }

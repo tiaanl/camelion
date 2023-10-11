@@ -3,13 +3,13 @@
 use crate::{Color, Component, Space};
 
 #[allow(clippy::manual_range_contains)]
-fn in_zero_to_one(value: f32) -> bool {
+fn in_zero_to_one(value: Component) -> bool {
     value >= 0.0 && value <= 1.0
 }
 
 /// Calculate deltaE OK (simple root sum of squares).
 /// <https://drafts.csswg.org/css-color-4/#color-difference-OK>
-fn delta_eok(reference: &Color, sample: &Color) -> f32 {
+fn delta_eok(reference: &Color, sample: &Color) -> Component {
     // Delta is calculated in the oklab color space.
     let reference = reference.to_space(Space::Oklab);
     let sample = sample.to_space(Space::Oklab);
@@ -55,9 +55,9 @@ impl Color {
 
         // 6. if inGamut(origin_Oklch) is true, convert origin_Oklch to
         //    destination and return it as the gamut mapped color.
-        // if origin_oklch.in_gamut() {
-        //     return self.clone();
-        // }
+        if origin_oklch.to_space(self.space).in_gamut() {
+            return self.clone();
+        }
 
         // 7. otherwise, let delta(one, two) be a function which returns the
         //    deltaEOK of color one compared to color two.
@@ -136,7 +136,7 @@ impl Color {
             // TODO: This point is NEVER reached, why?
             let mut r = origin_oklch.clone();
             r.components.1 = (min + max) / 2.0;
-            r
+            r.to_space(self.space)
         }
     }
 
@@ -201,8 +201,8 @@ mod tests {
         let yellow = Color::new(Space::DisplayP3, 1.0, 1.0, 0.0, 1.0);
         let mapped = yellow.to_space(Space::Srgb).map_into_gamut_range();
         assert_eq!(mapped.space, Space::Srgb);
-        assert_component_eq!(mapped.components.0, 0.99623185);
-        assert_component_eq!(mapped.components.1, 0.99901444);
+        assert_component_eq!(mapped.components.0, 0.9962327282577411);
+        assert_component_eq!(mapped.components.1, 0.9990142856519192);
         assert_component_eq!(mapped.components.2, 0.0);
     }
 }

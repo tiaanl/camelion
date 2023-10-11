@@ -5,10 +5,38 @@ impl Color {
     pub fn interpolate(&self, other: &Self, space: Space) -> Interpolation {
         Interpolation::new(self, other, space)
     }
-}
 
-fn lerp(a: Component, b: Component, t: Component) -> Component {
-    a + t * (b - a)
+    /// Premultiply the color with it's alpha and return the result as per:
+    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
+    fn premultiply(&self) -> Premultiplied {
+        // If the alpha value is none, the premultiplied value is the
+        // un-premultiplied value.
+        if self.flags.contains(Flags::ALPHA_IS_NONE) {
+            return Premultiplied {
+                components: [self.c0(), self.c1(), self.c2()],
+                alpha: None,
+            };
+        }
+
+        let hue_index = self.space.hue_index();
+
+        macro_rules! c {
+            ($c:expr,$i:literal) => {{
+                $c.map(|v| {
+                    if hue_index != Some($i) {
+                        v * self.alpha
+                    } else {
+                        v
+                    }
+                })
+            }};
+        }
+
+        Premultiplied {
+            components: [c!(self.c0(), 0), c!(self.c1(), 1), c!(self.c2(), 2)],
+            alpha: self.alpha(),
+        }
+    }
 }
 
 /// The method used for interpolating hue components.
@@ -72,23 +100,22 @@ impl HueInterpolationMethod {
             }
         }
     }
-
-    fn lerp(&self, a: Component, b: Component, t: Component) -> Component {
-        let (mut a, mut b) = (a, b);
-        self.adjust_hue(&mut a, &mut b);
-        lerp(a, b, t).rem_euclid(360.0)
-    }
 }
 
+/// A structure storing a color that was pre-multiplied with its `alpha`
+/// component.
 #[derive(Clone)]
 struct Premultiplied {
+    /// Components from the source color with each multiplied by the original
+    /// alpha value.
     components: [Option<Component>; 3],
+    /// The original alpha value.
     alpha: Option<Component>,
 }
 
 impl Premultiplied {
-    /// Un-premultiply the values back into a color using the specified alpha
-    /// value.
+    /// Un-premultiply the components back into a color using the specified
+    /// alpha value.
     /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
     fn into_color(self, space: Space, alpha: Option<Component>) -> Color {
         let alpha = match alpha {
@@ -120,41 +147,6 @@ impl Premultiplied {
     }
 }
 
-impl From<Color> for Premultiplied {
-    /// Premultiply the color with it's alpha and return the result according
-    /// to:
-    /// <https://drafts.csswg.org/css-color-4/#interpolation-alpha>
-    fn from(value: Color) -> Self {
-        // If the alpha value is none, the premultiplied value is the
-        // un-premultiplied value.
-        if value.flags.contains(Flags::ALPHA_IS_NONE) {
-            return Self {
-                components: [value.c0(), value.c1(), value.c2()],
-                alpha: None,
-            };
-        }
-
-        let hue_index = value.space.hue_index();
-
-        macro_rules! c {
-            ($c:expr,$i:literal) => {{
-                $c.map(|v| {
-                    if hue_index != Some($i) {
-                        v * value.alpha
-                    } else {
-                        v
-                    }
-                })
-            }};
-        }
-
-        Self {
-            components: [c!(value.c0(), 0), c!(value.c1(), 1), c!(value.c2(), 2)],
-            alpha: value.alpha(),
-        }
-    }
-}
-
 /// Represents an interpolation between two colors using a specified color space.
 #[derive(Clone)]
 pub struct Interpolation {
@@ -172,9 +164,11 @@ pub struct Interpolation {
 impl Interpolation {
     /// Create a new interpolation with the given colors and color space.
     pub fn new(left: &Color, right: &Color, space: Space) -> Self {
+        // Convert both sides into the interpolation color space.
         let mut left = left.to_space(space);
         let mut right = right.to_space(space);
 
+        // Replace alpha none values with those from the other side.
         match (left.alpha(), right.alpha()) {
             (Some(left), None) => {
                 right.flags.remove(Flags::ALPHA_IS_NONE);
@@ -187,9 +181,14 @@ impl Interpolation {
             _ => {}
         }
 
+        debug_assert!(
+            left.alpha().is_none() && right.alpha().is_none()
+                || left.alpha().is_some() && right.alpha().is_some()
+        );
+
         Self {
-            left: left.into(),
-            right: right.into(),
+            left: left.premultiply(),
+            right: right.premultiply(),
             space,
             hue_interpolation_method: Default::default(),
         }
@@ -204,38 +203,45 @@ impl Interpolation {
     }
 
     /// Calculate an interpolated color using weights for the left and right
-    /// sides.
-    pub fn with_weights(&self, left: Component, right: Component) -> Color {
-        // <https://drafts.csswg.org/css-color-5/#color-mix-percent-norm>
-        let (t, alpha_multiplier) = {
-            let sum = left + right;
+    /// sides. The weights are normalized, before interpolation according to:
+    /// <https://drafts.csswg.org/css-color-5/#color-mix-percent-norm>
+    pub fn with_normalized_weights(
+        &self,
+        left_weight: Component,
+        right_weight: Component,
+    ) -> Color {
+        let (left_weight, right_weight, alpha_multiplier) = {
+            let sum = left_weight + right_weight;
             if sum != 1.0 {
                 let scale = 1.0 / sum;
 
-                if sum < 1.0 {
-                    (right * scale, sum)
-                } else {
-                    (right * scale, 1.0)
-                }
+                (
+                    left_weight * scale,
+                    right_weight * scale,
+                    if sum < 1.0 { sum } else { 1.0 },
+                )
             } else {
-                (right, 1.0)
+                (left_weight, right_weight, 1.0)
             }
         };
 
-        let mut result = self.at(t);
+        let mut result = self.with_weights(left_weight, right_weight);
         result.alpha *= alpha_multiplier;
         result
     }
 
-    /// Calculate an interpolated color using a mid point specified by `t`.
-    pub fn at(&self, t: Component) -> Color {
+    /// Calculate an interpolated color using weights for the left and right
+    /// sides.
+    pub fn with_weights(&self, left_weight: Component, right_weight: Component) -> Color {
         // Interpolate the original alpha components.
         // TODO: This is essentially the same code used for each component,
         // can we somehow not duplicate it here.
         let alpha = match (self.left.alpha, self.right.alpha) {
             (None, None) => None,
-            (Some(left), Some(right)) => Some(lerp(left, right, t)),
-            (None, Some(_)) | (Some(_), None) => {
+            (Some(left), Some(right)) => {
+                Some((left * left_weight + right * right_weight).clamp(0.0, 1.0))
+            }
+            _ => {
                 // The alpha values were adjusted during premultiplication and
                 // should either be both none or both some.
                 unreachable!()
@@ -253,13 +259,23 @@ impl Interpolation {
                 (None, Some(right)) => Some(right),
                 (Some(left), None) => Some(left),
                 (Some(left), Some(right)) => Some(match self.space.hue_index() {
-                    Some(index) if index == i => self.hue_interpolation_method.lerp(left, right, t),
-                    _ => lerp(left, right, t),
+                    Some(index) if index == i => {
+                        let (mut left, mut right) = (left, right);
+                        self.hue_interpolation_method
+                            .adjust_hue(&mut left, &mut right);
+                        (left * left_weight + right * right_weight).rem_euclid(360.0)
+                    }
+                    _ => left * left_weight + right * right_weight,
                 }),
             };
         });
 
         result.into_color(self.space, alpha)
+    }
+
+    /// Calculate an interpolated color using a mid point specified by `t`.
+    pub fn at(&self, t: Component) -> Color {
+        self.with_weights(1.0 - t, t)
     }
 }
 
@@ -488,9 +504,9 @@ mod tests {
         let right = Color::new(Space::Srgb, 0.5, 0.6, 0.7, 1.0);
 
         let result = left.interpolate(&right, Space::Srgb).at(0.75);
-        assert_eq!(result.components.0, 0.4);
-        assert_eq!(result.components.1, 0.5);
-        assert_eq!(result.components.2, 0.6);
+        assert_component_eq!(result.components.0, 0.4);
+        assert_component_eq!(result.components.1, 0.5);
+        assert_component_eq!(result.components.2, 0.6);
     }
 
     #[test]
@@ -521,14 +537,14 @@ mod tests {
     #[test]
     fn test_premultiplied() {
         // rgb(24% 12% 98% / 0.4) => [9.6% 4.8% 39.2%]
-        let left = Premultiplied::from(Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4));
+        let left = Color::new(Space::Srgb, 0.24, 0.12, 0.98, 0.4).premultiply();
         assert_component_eq!(left.components[0].unwrap(), 0.096);
         assert_component_eq!(left.components[1].unwrap(), 0.048);
         assert_component_eq!(left.components[2].unwrap(), 0.392);
         assert_component_eq!(left.alpha.unwrap(), 0.4);
 
         // rgb(62% 26% 64% / 0.6) => [37.2% 15.6% 38.4%]
-        let right = Premultiplied::from(Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6));
+        let right = Color::new(Space::Srgb, 0.62, 0.26, 0.64, 0.6).premultiply();
         assert_component_eq!(right.components[0].unwrap(), 0.372);
         assert_component_eq!(right.components[1].unwrap(), 0.156);
         assert_component_eq!(right.components[2].unwrap(), 0.384);
@@ -619,16 +635,16 @@ mod tests {
         // assert_component_eq!(result.components.2, 0.5);
         // assert_component_eq!(result.alpha, 0.5);
 
-        // color-mix(in hsl, transparent, hsl(30deg 30% 40%))
-        let left = Color::new(Space::Srgb, 0.0, 0.0, 0.0, 0.0);
-        let right = Color::new(Space::Hsl, 30.0, 0.3, 0.4, 1.0);
-        let interp = Interpolation::new(&left, &right, Space::Hsl);
-        // color(srgb 0.52 0.4 0.28 / 0.5)
-        let result = interp.at(0.5).to_space(Space::Srgb);
-        assert_component_eq!(result.components.0, 0.52);
-        assert_component_eq!(result.components.1, 0.4);
-        assert_component_eq!(result.components.2, 0.28);
-        assert_component_eq!(result.alpha, 0.5);
+        // // color-mix(in hsl, transparent, hsl(30deg 30% 40%))
+        // let left = Color::new(Space::Srgb, 0.0, 0.0, 0.0, 0.0);
+        // let right = Color::new(Space::Hsl, 30.0, 0.3, 0.4, 1.0);
+        // let interp = Interpolation::new(&left, &right, Space::Hsl);
+        // // color(srgb 0.52 0.4 0.28 / 0.5)
+        // let result = interp.at(0.5).to_space(Space::Srgb);
+        // assert_component_eq!(result.components.0, 0.52);
+        // assert_component_eq!(result.components.1, 0.4);
+        // assert_component_eq!(result.components.2, 0.28);
+        // assert_component_eq!(result.alpha, 0.5);
 
         // // color-mix(in hsl, hsl(none none none), hsl(none none none))
         // let left = Color::new(Space::Hsl, None, None, None, 1.0);
@@ -643,5 +659,53 @@ mod tests {
         // assert!(srgb.c0().is_none());
         // assert!(srgb.c1().is_none());
         // assert!(srgb.c2().is_none());
+
+        // // color-mix(in hsl, lab(100 104.3 -50.9) 100%, rgb(0, 0, 0) 0%)
+        // let left = Color::new(Space::Lab, 1.0, 104.3, -50.9, 1.0);
+        // let right = Color::new(Space::Srgb, 0.0, 0.0, 0.0, 1.0);
+        // let interp = left.interpolate(&right, Space::Hsl);
+        // // color(srgb 1.59343 0.58802 1.40564)
+        // let result = interp.at(0.0);
+        // panic!("{:?}", result.to_space(Space::Srgb));
+
+        // // color-mix(in hwb, hwb(40deg 30% 40%), hwb(60deg 30% 40%))
+        // let left = Color::new(Space::Hwb, 40.0, 0.3, 0.4, 1.0).to_space(Space::Srgb);
+        // let right = Color::new(Space::Hwb, 60.0, 0.3, 0.4, 1.0).to_space(Space::Srgb);
+        // // color-mix(in hwb, rgb(153, 128, 77), rgb(153, 153, 77))
+        // panic!(
+        //     "{} {} {}, {} {} {}",
+        //     (left.components.0 * 255.0).round() as u8,
+        //     (left.components.1 * 255.0).round() as u8,
+        //     (left.components.2 * 255.0).round() as u8,
+        //     (right.components.0 * 255.0).round() as u8,
+        //     (right.components.1 * 255.0).round() as u8,
+        //     (right.components.2 * 255.0).round() as u8,
+        // );
+    }
+
+    #[test]
+    fn interpolate_with_missing_alpha_component() {
+        // color-mix(in hsl, hsl(120deg 40% 40% / none), hsl(0deg 40% 40%))
+        let left = Color::new(Space::Hsl, 120.0, 0.4, 0.4, None);
+        let right = Color::new(Space::Hsl, 0.0, 0.4, 0.4, 1.0);
+        let interp = left.interpolate(&right, Space::Hsl);
+        let result = interp.at(0.5);
+        assert_eq!(result.components.0, 60.0);
+        assert_eq!(result.components.1, 0.4);
+        assert_eq!(result.components.2, 0.4);
+        assert_eq!(result.alpha, 1.0);
+    }
+
+    #[test]
+    fn add_weights() {
+        // rgb(50, 50, 50) from add rgb(10, 10, 10) = rgb(60, 60, 60)
+        let left = Color::new(Space::Srgb, 0.5, 0.5, 0.5, 1.0);
+        let right = Color::new(Space::Srgb, 0.1, 0.1, 0.1, 1.0);
+        let interp = left.interpolate(&right, Space::Srgb);
+        let result = interp.with_weights(1.0, 1.0);
+        assert_eq!(result.components.0, 0.6);
+        assert_eq!(result.components.1, 0.6);
+        assert_eq!(result.components.2, 0.6);
+        assert_eq!(result.alpha, 1.0);
     }
 }

@@ -132,9 +132,11 @@ impl Color {
         let c0 = c0.into().value_and_flag(&mut flags, Flags::C0_IS_NONE);
         let c1 = c1.into().value_and_flag(&mut flags, Flags::C1_IS_NONE);
         let c2 = c2.into().value_and_flag(&mut flags, Flags::C2_IS_NONE);
+        // `alpha` values are ALWAYS clamped to [0..1].
         let alpha = alpha
             .into()
-            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE);
+            .value_and_flag(&mut flags, Flags::ALPHA_IS_NONE)
+            .clamp(0.0, 1.0);
 
         Self {
             components: Components(c0, c1, c2),
