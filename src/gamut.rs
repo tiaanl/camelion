@@ -14,7 +14,8 @@ fn delta_eok(reference: &Color, sample: &Color) -> Component {
     let reference = reference.to_space(Space::Oklab);
     let sample = sample.to_space(Space::Oklab);
 
-    (reference.components - sample.components).euclid_length()
+    let d = sample.components - reference.components;
+    (d.0 * d.0 + d.1 * d.1 + d.2 * d.2).sqrt()
 }
 
 impl Color {
@@ -40,10 +41,9 @@ impl Color {
         if origin_oklch.components.0 >= 1.0 {
             return Color::new(self.space, 1.0, 1.0, 1.0, self.alpha);
         }
-
         // 4. if the Lightness of origin_Oklch is less than than or equal to
         //    0%, return { 0 0 0 origin.alpha } in destination.
-        if origin_oklch.components.0 <= 0.0 {
+        else if origin_oklch.components.0 <= 0.0 {
             return Color::new(self.space, 0.0, 0.0, 0.0, self.alpha);
         }
 
@@ -51,7 +51,7 @@ impl Color {
         //    passed a color, that color is inside the gamut of destination.
         //    For HSL and HWB, it returns true if the color is inside the gamut
         //    of sRGB.
-        //    See [`Color::in_gamut`] below.
+        //    See [`Color::in_gamut`].
 
         // 6. if inGamut(origin_Oklch) is true, convert origin_Oklch to
         //    destination and return it as the gamut mapped color.
@@ -61,17 +61,18 @@ impl Color {
 
         // 7. otherwise, let delta(one, two) be a function which returns the
         //    deltaEOK of color one compared to color two.
+        // See [`delta_eok`] function.
 
         // 8. let JND be 0.02
         const JND: Component = 0.02;
 
         // 9. let epsilon be 0.0001
-        const EPSILON: Component = 0.0001;
+        const EPSILON: Component = 1.0e-4;
 
         // 10. let clip(color) be a function which converts color to
         //     destination, converts all negative components to zero, converts
         //     all components greater that one to one, and returns the result.
-        //     See [`Color::clip`] below.
+        // See [`Color::clip`].
 
         // 11. set min to zero
         let mut min = 0.0;
@@ -83,6 +84,12 @@ impl Color {
         //     in gamut, and set it to true
         let mut min_in_gamut = true;
 
+        let mut current = origin_oklch.clone();
+        let clipped = current.to_space(self.space).clip();
+        if delta_eok(&current, &clipped) < JND {
+            return clipped;
+        }
+
         // 14. while (max - min is greater than epsilon) repeat the following
         //     steps.
         while max - min > EPSILON {
@@ -91,12 +98,13 @@ impl Color {
 
             // 14.2. set current to origin_Oklch and then set the chroma
             //       component to chroma
-            let mut current = origin_oklch.clone();
             current.components.1 = chroma;
+
+            let current_in_space = current.to_space(self.space);
 
             // 14.3. if min_inGamut is true and also if inGamut(current) is
             //       true, set min to chroma and continue to repeat these steps.
-            if min_in_gamut && current.to_space(self.space).in_gamut() {
+            if min_in_gamut && current_in_space.in_gamut() {
                 min = chroma;
                 continue;
             }
@@ -105,7 +113,7 @@ impl Color {
             //       steps:
 
             // 14.4.1. set clipped to clip(current)
-            let clipped = current.to_space(self.space).clip();
+            let clipped = current_in_space.clip();
 
             // 14.4.2. set E to delta(clipped, current)
             let e = delta_eok(&clipped, &current);
@@ -119,10 +127,11 @@ impl Color {
                 }
 
                 // 14.4.3.2. otherwise
-                // 14.4.3.1. set min_inGamut to false
+
+                // 14.4.3.2.1. set min_inGamut to false
                 min_in_gamut = false;
 
-                // 14.4.3.2. set min to chroma
+                // 14.4.3.2.2. set min to chroma
                 min = chroma;
             } else {
                 // 14.4.4. otherwise, set max to chroma and continue to repeat
@@ -132,12 +141,7 @@ impl Color {
         }
 
         // 15. return current as the gamut mapped color current
-        {
-            // TODO: This point is NEVER reached, why?
-            let mut r = origin_oklch.clone();
-            r.components.1 = (min + max) / 2.0;
-            r.to_space(self.space)
-        }
+        current.to_space(self.space)
     }
 
     /// Return a color with each of the components clipped (clamped to [0..1]).
@@ -182,12 +186,11 @@ impl Color {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Component;
 
     macro_rules! assert_component_eq {
         ($actual:expr,$expected:expr) => {{
             assert!(
-                ($actual - $expected).abs() <= Component::EPSILON * 1e3,
+                ($actual - $expected).abs() <= 1.0e-6,
                 "{} != {}",
                 $actual,
                 $expected

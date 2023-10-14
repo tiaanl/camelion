@@ -23,11 +23,6 @@ impl Components {
     pub fn map(&self, f: impl Fn(Component) -> Component) -> Self {
         Self(f(self.0), f(self.1), f(self.2))
     }
-
-    /// Using the components as a euclidean vector, calculate it's length.
-    pub fn euclid_length(&self) -> Component {
-        (self.0 * self.0 + self.1 * self.1 + self.2 * self.2).sqrt()
-    }
 }
 
 impl std::ops::Sub for Components {

@@ -10,11 +10,11 @@ use crate::{
 mod space {
     pub trait Space {}
 
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub struct Lab;
     impl Space for Lab {}
 
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub struct Oklab;
     impl Space for Oklab {}
 }
