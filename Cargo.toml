@@ -12,5 +12,8 @@ euclid = "0.22"
 num-traits = "*"
 camelion-macros = { path = "macros" }
 
+[dev-dependencies]
+approx = "0.5.1"
+
 [workspace]
 members = [".", "bin/gradient"]

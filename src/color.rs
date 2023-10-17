@@ -25,6 +25,12 @@ impl Components {
     }
 }
 
+impl std::fmt::Display for Components {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({:.6} {:.6} {:.6})", self.0, self.1, self.2)
+    }
+}
+
 impl std::ops::Sub for Components {
     type Output = Self;
 

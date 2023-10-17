@@ -1,4 +1,5 @@
 //! Gamut mapping functions.
+//! <https://drafts.csswg.org/css-color-4/#gamut-mapping>
 
 use crate::{Color, Component, Space};
 
@@ -21,7 +22,7 @@ fn delta_eok(reference: &Color, sample: &Color) -> Component {
 impl Color {
     /// If this color is not within gamut limits of it's color space, then a
     /// gamut mapping is applied to map the components into range.
-    /// <https://drafts.csswg.org/css-color-4/#gamut-mapping>
+    /// <https://drafts.csswg.org/css-color-4/#binsearch>
     pub fn map_into_gamut_range(&self) -> Self {
         // 1. if destination has no gamut limits (XYZ-D65, XYZ-D50, Lab, LCH,
         //    Oklab, Oklch) return origin.
@@ -29,6 +30,12 @@ impl Color {
             self.space,
             Space::Lab | Space::Lch | Space::Oklab | Space::Oklch | Space::XyzD50 | Space::XyzD65
         ) {
+            return self.clone();
+        }
+
+        // Local optimization: If the color is already in gamut, then we can
+        // skip the binary search and return the color.
+        if self.in_gamut() {
             return self.clone();
         }
 
@@ -55,9 +62,7 @@ impl Color {
 
         // 6. if inGamut(origin_Oklch) is true, convert origin_Oklch to
         //    destination and return it as the gamut mapped color.
-        if origin_oklch.to_space(self.space).in_gamut() {
-            return self.clone();
-        }
+        // We already made a check at the top.
 
         // 7. otherwise, let delta(one, two) be a function which returns the
         //    deltaEOK of color one compared to color two.
@@ -85,7 +90,11 @@ impl Color {
         let mut min_in_gamut = true;
 
         let mut current = origin_oklch.clone();
-        let clipped = current.to_space(self.space).clip();
+        let mut current_in_space = current.to_space(self.space);
+
+        // If we are already clipped, then we can return the clipped color and
+        // avoid the binary search completely.
+        let clipped = current_in_space.clip();
         if delta_eok(&current, &clipped) < JND {
             return clipped;
         }
@@ -100,7 +109,7 @@ impl Color {
             //       component to chroma
             current.components.1 = chroma;
 
-            let current_in_space = current.to_space(self.space);
+            current_in_space = current.to_space(self.space);
 
             // 14.3. if min_inGamut is true and also if inGamut(current) is
             //       true, set min to chroma and continue to repeat these steps.
@@ -141,7 +150,7 @@ impl Color {
         }
 
         // 15. return current as the gamut mapped color current
-        current.to_space(self.space)
+        current_in_space
     }
 
     /// Return a color with each of the components clipped (clamped to [0..1]).
@@ -186,26 +195,51 @@ impl Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assert_component_eq;
 
-    macro_rules! assert_component_eq {
-        ($actual:expr,$expected:expr) => {{
-            assert!(
-                ($actual - $expected).abs() <= 1.0e-6,
-                "{} != {}",
-                $actual,
-                $expected
-            )
-        }};
+    #[test]
+    fn map_red() {
+        // color(display-p3 1 0 0)
+        let source = Color::new(Space::DisplayP3, 1.0, 0.0, 0.0, 1.0).to_space(Space::Srgb);
+        let mapped = source.map_into_gamut_range();
+
+        assert_component_eq!(mapped.components.0, 1.0);
+        assert_component_eq!(mapped.components.1, 0.044557023834955904);
+        assert_component_eq!(mapped.components.2, 0.045930356761375773);
     }
 
     #[test]
-    fn basic() {
-        // color(display-p3 1 1 0)
-        let yellow = Color::new(Space::DisplayP3, 1.0, 1.0, 0.0, 1.0);
-        let mapped = yellow.to_space(Space::Srgb).map_into_gamut_range();
-        assert_eq!(mapped.space, Space::Srgb);
-        assert_component_eq!(mapped.components.0, 0.9962327282577411);
-        assert_component_eq!(mapped.components.1, 0.9990142856519192);
-        assert_component_eq!(mapped.components.2, 0.0);
+    fn find_gamut_intersection_linearly() {
+        // This test is just here for a sanity check against the gamut mapping
+        // algorithm we're using to see the difference in results.
+
+        // color(display-p3 1 0 0)
+        let source = Color::new(Space::DisplayP3, 1.0, 0.0, 0.0, 1.0);
+
+        const EPSILON: Component = 1.0e-6;
+
+        let oklch = source.to_space(Space::Oklch);
+
+        let mut min = 0.0;
+        let mut max = oklch.components.1;
+        let mut current = oklch.clone();
+
+        while max - min > EPSILON {
+            let chroma = (min + max) / 2.0;
+
+            current.components.1 = chroma;
+
+            if current.to_space(Space::Srgb).in_gamut() {
+                min = chroma;
+            } else {
+                max = chroma;
+            }
+        }
+
+        let result = current.to_space(Space::Srgb);
+
+        assert_component_eq!(result.components.0, 1.0);
+        assert_component_eq!(result.components.1, 0.2034669);
+        assert_component_eq!(result.components.2, 0.15875728);
     }
 }

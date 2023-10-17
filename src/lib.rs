@@ -20,6 +20,9 @@
 
 #![deny(missing_docs)]
 
+#[cfg(test)]
+mod test;
+
 mod color;
 mod convert;
 mod gamut;
