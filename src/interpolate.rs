@@ -708,4 +708,17 @@ mod tests {
         assert_eq!(result.components.2, 0.6);
         assert_eq!(result.alpha, 1.0);
     }
+
+    #[test]
+    fn interpolate_with_missing_components() {
+        // color-mix(in srgb, red, hsl(none none 100%))
+        let left = Color::new(Space::Srgb, 1.0, 0.0, 0.0, 1.0);
+        let right = Color::new(Space::Hsl, None, None, 1.0, 1.0);
+        let interp = left.interpolate(&right, Space::Srgb);
+        let result = interp.at(0.5);
+        assert_eq!(result.components.0, 1.0);
+        assert_eq!(result.components.1, 0.5);
+        assert_eq!(result.components.2, 0.5);
+        assert_eq!(result.alpha, 1.0);
+    }
 }

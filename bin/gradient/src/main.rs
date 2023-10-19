@@ -38,12 +38,24 @@ fn main() {
 
             let interp_index = y / (height / interps.len() as u32);
 
-            let c = interps[interp_index as usize].at(t).to_space(Space::Srgb);
+            let c = interps[interp_index as usize]
+                .at(t)
+                .to_space(Space::Srgb)
+                .map_into_gamut_range();
 
-            pixel.0[0] = (c.components.0 * 255.0).round() as u8;
-            pixel.0[1] = (c.components.1 * 255.0).round() as u8;
-            pixel.0[2] = (c.components.2 * 255.0).round() as u8;
-            pixel.0[3] = 255;
+            assert!(
+                c.in_gamut(),
+                "Out of gamut limits: {:?} {}",
+                interps[interp_index as usize].space,
+                c.components
+            );
+
+            *pixel = Rgba([
+                (c.components.0.clamp(0.0, 1.0) * 255.0).round() as u8,
+                (c.components.1.clamp(0.0, 1.0) * 255.0).round() as u8,
+                (c.components.2.clamp(0.0, 1.0) * 255.0).round() as u8,
+                255,
+            ]);
         }
     });
 

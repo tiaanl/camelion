@@ -48,9 +48,10 @@ impl Color {
         if origin_oklch.components.0 >= 1.0 {
             return Color::new(self.space, 1.0, 1.0, 1.0, self.alpha);
         }
+
         // 4. if the Lightness of origin_Oklch is less than than or equal to
         //    0%, return { 0 0 0 origin.alpha } in destination.
-        else if origin_oklch.components.0 <= 0.0 {
+        if origin_oklch.components.0 <= 0.0 {
             return Color::new(self.space, 0.0, 0.0, 0.0, self.alpha);
         }
 
@@ -90,7 +91,7 @@ impl Color {
         let mut min_in_gamut = true;
 
         let mut current = origin_oklch.clone();
-        let mut current_in_space = current.to_space(self.space);
+        let mut current_in_space = self.clone();
 
         // If we are already clipped, then we can return the clipped color and
         // avoid the binary search completely.
@@ -170,6 +171,7 @@ impl Color {
     /// Mainly for RGB based colors, checking components to be inside [0..1].
     /// `Hsl` and `Hwb` are converted to [`Space::Srgb`] before being checked.
     pub fn in_gamut(&self) -> bool {
+        const EPSILON: Component = 1.0 / i16::MAX as Component;
         match self.space {
             Space::Srgb
             | Space::SrgbLinear
@@ -239,7 +241,7 @@ mod tests {
         let result = current.to_space(Space::Srgb);
 
         assert_component_eq!(result.components.0, 1.0);
-        assert_component_eq!(result.components.1, 0.2034669);
-        assert_component_eq!(result.components.2, 0.15875728);
+        assert_component_eq!(result.components.1, 0.2034076);
+        assert_component_eq!(result.components.2, 0.1587125);
     }
 }
