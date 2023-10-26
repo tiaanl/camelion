@@ -1,4 +1,5 @@
 use crate::color::{Color, Component, Flags, Space};
+use crate::math::normalize_hue;
 
 impl Color {
     /// Create an interpolation that will interpolate from `self` to `other` using the specified [`Space`](color space).
@@ -67,8 +68,8 @@ impl HueInterpolationMethod {
         debug_assert!(!a.is_nan());
         debug_assert!(!b.is_nan());
 
-        *a = a.rem_euclid(360.0);
-        *b = b.rem_euclid(360.0);
+        *a = normalize_hue(*a);
+        *b = normalize_hue(*b);
 
         match self {
             HueInterpolationMethod::Shorter => {
@@ -266,7 +267,7 @@ impl Interpolation {
                         let (mut left, mut right) = (left, right);
                         self.hue_interpolation_method
                             .adjust_hue(&mut left, &mut right);
-                        (left * left_weight + right * right_weight).rem_euclid(360.0)
+                        normalize_hue(left * left_weight + right * right_weight)
                     }
                     _ => left * left_weight + right * right_weight,
                 }),

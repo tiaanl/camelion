@@ -3,7 +3,7 @@
 
 use crate::{
     color::{Component, Components, HasSpace, Space},
-    math::{transform, transform_3x3, Transform},
+    math::{almost_zero, normalize_hue, transform, transform_3x3, Transform},
     models::xyz::{ToXyz, WhitePoint, Xyz, XyzD50, XyzD65, D50, D65},
 };
 
@@ -35,8 +35,12 @@ impl<S: space::Space> Rectangular<S> {
     /// Convert this orthogonal rectangular model into its cylindrical polar
     /// form.
     pub fn to_polar(&self) -> Polar<S> {
-        let hue = self.b.atan2(self.a).to_degrees().rem_euclid(360.0);
         let chroma = (self.a * self.a + self.b * self.b).sqrt();
+        let hue = if almost_zero(chroma) {
+            Component::NAN
+        } else {
+            normalize_hue(self.b.atan2(self.a).to_degrees())
+        };
 
         Polar::new(self.lightness, chroma, hue)
     }

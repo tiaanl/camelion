@@ -201,12 +201,12 @@ impl Hwb {
 mod util {
     use crate::{
         color::{Component, Components},
-        math::normalize,
+        math::{almost_zero, normalize, normalize_hue},
     };
 
     /// Calculate the hue from RGB components and return it along with the min
     /// and max RGB values.
-    fn rgb_to_hue_min_max(from: &Components) -> (Component, Component, Component) {
+    fn rgb_to_hue_with_min_max(from: &Components) -> (Component, Component, Component) {
         let Components(red, green, blue) = *from;
 
         let max = red.max(green).max(blue);
@@ -232,20 +232,17 @@ mod util {
     /// Convert from RGB notation to HSL notation.
     /// <https://drafts.csswg.org/css-color-4/#rgb-to-hsl>
     pub fn rgb_to_hsl(from: &Components) -> Components {
-        let (hue, min, max) = rgb_to_hue_min_max(from);
+        let (hue, min, max) = rgb_to_hue_with_min_max(from);
 
         let lightness = (min + max) / 2.0;
         let delta = max - min;
 
-        let saturation = if delta != 0.0 {
-            if lightness == 0.0 || lightness == 1.0 {
+        let saturation =
+            if almost_zero(delta) || almost_zero(lightness) || almost_zero(1.0 - lightness) {
                 0.0
             } else {
                 (max - lightness) / lightness.min(1.0 - lightness)
-            }
-        } else {
-            0.0
-        };
+            };
 
         Components(hue, saturation, lightness)
     }
@@ -259,7 +256,7 @@ mod util {
             return Components(lightness, lightness, lightness);
         }
 
-        let hue = hue.rem_euclid(360.0);
+        let hue = normalize_hue(hue);
 
         macro_rules! f {
             ($n:expr) => {{
@@ -275,7 +272,7 @@ mod util {
     /// Convert from RGB notation to HWB notation.
     /// <https://drafts.csswg.org/css-color-4/#rgb-to-hwb>
     pub fn rgb_to_hwb(from: &Components) -> Components {
-        let (hue, min, max) = rgb_to_hue_min_max(from);
+        let (hue, min, max) = rgb_to_hue_with_min_max(from);
 
         let whiteness = min;
         let blackness = 1.0 - max;

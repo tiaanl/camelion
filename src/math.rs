@@ -5,12 +5,27 @@ use euclid::default::{Transform3D, Vector3D};
 use std::marker::PhantomData;
 
 /// Normalize a floating point value to 0.0 if it is NaN.
+#[inline]
 pub fn normalize(v: Component) -> Component {
     if v.is_nan() {
         0.0
     } else {
         v
     }
+}
+
+/// Normalize a hue component to within [0..360] and ensure it is not NAN.
+#[inline]
+pub fn normalize_hue(hue: Component) -> Component {
+    normalize(hue).rem_euclid(360.0)
+}
+
+/// Returns true if the value is very close to zero.
+#[inline]
+pub fn almost_zero(v: Component) -> bool {
+    // TODO(tlouw): This could be re-evaluated at some point to allow for a
+    //              more lenient threshold.
+    v.abs() < Component::EPSILON
 }
 
 pub type Transform = Transform3D<Component>;
