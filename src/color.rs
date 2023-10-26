@@ -185,10 +185,19 @@ impl Color {
 
     /// Return a reference to this color types as the given model.
     pub fn as_model<T: Model + From<Components>>(&self) -> T {
-        // Models treat NaN as zero (0.0).
-        self.components
-            .map(|c| if c.is_nan() { 0.0 } else { c })
-            .into()
+        macro_rules! c {
+            ($c:expr) => {{
+                match $c {
+                    // NAN values are converted to 0 for conversions, etc.
+                    Some(v) if v.is_nan() => 0.0,
+                    // Missing components are represented by a NAN.
+                    None => Component::NAN,
+                    Some(v) => v,
+                }
+            }};
+        }
+
+        Components(c!(self.c0()), c!(self.c1()), c!(self.c2())).into()
     }
 }
 

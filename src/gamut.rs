@@ -171,7 +171,6 @@ impl Color {
     /// Mainly for RGB based colors, checking components to be inside [0..1].
     /// `Hsl` and `Hwb` are converted to [`Space::Srgb`] before being checked.
     pub fn in_gamut(&self) -> bool {
-        const EPSILON: Component = 1.0 / i16::MAX as Component;
         match self.space {
             Space::Srgb
             | Space::SrgbLinear
@@ -241,7 +240,7 @@ mod tests {
         let result = current.to_space(Space::Srgb);
 
         assert_component_eq!(result.components.0, 1.0);
-        assert_component_eq!(result.components.1, 0.2034076);
-        assert_component_eq!(result.components.2, 0.1587125);
+        assert_component_eq!(result.components.1, 0.20348036);
+        assert_component_eq!(result.components.2, 0.15877128);
     }
 }

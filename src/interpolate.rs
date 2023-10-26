@@ -164,6 +164,9 @@ pub struct Interpolation {
 impl Interpolation {
     /// Create a new interpolation with the given colors and color space.
     pub fn new(left: &Color, right: &Color, space: Space) -> Self {
+        // TODO(tlouw): the carrying-forward step must be performed before any
+        // powerless component handling.
+
         // Convert both sides into the interpolation color space.
         let mut left = left.to_space(space);
         let mut right = right.to_space(space);
@@ -720,5 +723,23 @@ mod tests {
         assert_eq!(result.components.1, 0.5);
         assert_eq!(result.components.2, 0.5);
         assert_eq!(result.alpha, 1.0);
+
+        // color-mix(in hsl, hsl(none none none), hsl(none none none))
+        let left = Color::new(Space::Hsl, None, None, None, 1.0);
+        let right = Color::new(Space::Hsl, None, None, None, 1.0);
+        let interp = left.interpolate(&right, Space::Hsl);
+
+        let result = interp.at(0.5);
+        assert_eq!(result.c0(), None);
+        assert_eq!(result.c1(), None);
+        assert_eq!(result.c2(), None);
+        assert_eq!(result.alpha(), Some(1.0));
+
+        let result = result.to_space(Space::Srgb);
+        println!("{:?}", result);
+        assert_eq!(result.c0(), None);
+        assert_eq!(result.c1(), None);
+        assert_eq!(result.c2(), None);
+        assert_eq!(result.alpha(), Some(1.0));
     }
 }
