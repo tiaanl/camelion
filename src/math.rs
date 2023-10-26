@@ -4,6 +4,15 @@ use crate::color::{Component, Components};
 use euclid::default::{Transform3D, Vector3D};
 use std::marker::PhantomData;
 
+/// Normalize a floating point value to 0.0 if it is NaN.
+pub fn normalize(v: Component) -> Component {
+    if v.is_nan() {
+        0.0
+    } else {
+        v
+    }
+}
+
 pub type Transform = Transform3D<Component>;
 
 type Vector = Vector3D<Component>;

@@ -737,9 +737,9 @@ mod tests {
 
         let result = result.to_space(Space::Srgb);
         println!("{:?}", result);
-        assert_eq!(result.c0(), None);
-        assert_eq!(result.c1(), None);
-        assert_eq!(result.c2(), None);
+        assert_eq!(result.c0(), Some(0.0));
+        assert_eq!(result.c1(), Some(0.0));
+        assert_eq!(result.c2(), Some(0.0));
         assert_eq!(result.alpha(), Some(1.0));
     }
 }

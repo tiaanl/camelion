@@ -199,7 +199,10 @@ impl Hwb {
 }
 
 mod util {
-    use crate::color::{Component, Components};
+    use crate::{
+        color::{Component, Components},
+        math::normalize,
+    };
 
     /// Calculate the hue from RGB components and return it along with the min
     /// and max RGB values.
@@ -250,18 +253,13 @@ mod util {
     /// Convert from HSL notation to RGB notation.
     /// <https://drafts.csswg.org/css-color-4/#hsl-to-rgb>
     pub fn hsl_to_rgb(from: &Components) -> Components {
-        let saturation = if from.1.is_nan() { 0.0 } else { from.1 };
-        let lightness = if from.2.is_nan() { 0.0 } else { from.2 };
+        let Components(hue, saturation, lightness) = from.map(normalize);
 
         if saturation <= 0.0 {
             return Components(lightness, lightness, lightness);
         }
 
-        let hue = if from.0.is_nan() {
-            0.0
-        } else {
-            from.0.rem_euclid(360.0)
-        };
+        let hue = hue.rem_euclid(360.0);
 
         macro_rules! f {
             ($n:expr) => {{
@@ -565,5 +563,15 @@ mod tests {
         let result = interp.at(0.5);
         // color(srgb 3 4.5 6)
         assert_eq!(result.alpha(), Some(1.0));
+    }
+
+    #[test]
+    fn rgb_to_hsl() {
+        // color(srgb 0.46 0.52 0.28 / 0.5)
+        let srgb = Color::new(Space::Srgb, 0.46, 0.52, 0.28, 0.5);
+        let hsl = srgb.to_space(Space::Hsl);
+        assert_component_eq!(hsl.components.0, 75.0);
+        assert_component_eq!(hsl.components.1, 0.3);
+        assert_component_eq!(hsl.components.2, 0.4);
     }
 }
