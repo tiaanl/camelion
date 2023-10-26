@@ -214,3 +214,16 @@ pub type Oklch = Polar<space::Oklab>;
 impl HasSpace for Oklch {
     const SPACE: Space = Space::Oklch;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn converting_to_polar_should_set_hue_to_missing_for_small_a_b_values() {
+        let lab = Lab::new(50.0, 0.0, 0.0);
+        let polar = lab.to_polar();
+
+        assert!(polar.hue.is_nan());
+    }
+}
