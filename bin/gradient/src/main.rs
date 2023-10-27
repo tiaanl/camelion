@@ -41,7 +41,7 @@ fn main() {
             let c = interps[interp_index as usize]
                 .at(t)
                 .to_space(Space::Srgb)
-                .map_into_gamut_range();
+                .map_into_gamut_limits();
 
             assert!(
                 c.in_gamut(),

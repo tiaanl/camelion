@@ -1,7 +1,7 @@
 //! Model a color in the CIE-XYZ color space.
 
 use crate::{
-    color::{Component, Components, HasSpace, Space},
+    color::{Component, Components, CssColorSpaceId, Space},
     math::{transform, transform_3x3, Transform},
 };
 
@@ -73,9 +73,12 @@ impl TransferWhitePoint<D50> for D65 {
 }
 
 /// Specify that a color model supports conversion to CIE-XYZ.
-pub trait ToXyz<W: WhitePoint> {
+pub trait ToXyz {
+    /// The white point reference that the color converts to.
+    type WhitePoint: WhitePoint;
+
     /// Convert this color to CIE-XYZ.
-    fn to_xyz(&self) -> Xyz<W>;
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint>;
 }
 
 camelion_macros::gen_model! {
@@ -103,13 +106,13 @@ impl<W: WhitePoint> Xyz<W> {
 /// Model for a color in the CIE-XYZ color space with a D50 white point.
 pub type XyzD50 = Xyz<D50>;
 
-impl HasSpace for XyzD50 {
-    const SPACE: Space = Space::XyzD50;
+impl CssColorSpaceId for XyzD50 {
+    const ID: Space = Space::XyzD50;
 }
 
 /// Model for a color in the CIE-XYZ color space with a D65 white point.
 pub type XyzD65 = Xyz<D65>;
 
-impl HasSpace for XyzD65 {
-    const SPACE: Space = Space::XyzD65;
+impl CssColorSpaceId for XyzD65 {
+    const ID: Space = Space::XyzD65;
 }

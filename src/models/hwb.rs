@@ -1,6 +1,6 @@
 //! Model a color with the HWB notation in the sRGB color space.
 
-use crate::color::{Component, HasSpace, Space};
+use crate::color::{Component, CssColorSpaceId, Space};
 
 camelion_macros::gen_model! {
     /// A color specified with the HWB notation in the sRGB color space.
@@ -14,6 +14,6 @@ camelion_macros::gen_model! {
     }
 }
 
-impl HasSpace for Hwb {
-    const SPACE: Space = Space::Hwb;
+impl CssColorSpaceId for Hwb {
+    const ID: Space = Space::Hwb;
 }

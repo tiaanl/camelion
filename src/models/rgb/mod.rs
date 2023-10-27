@@ -1,7 +1,12 @@
 //! Model a color in the sRGB color space.
 
+mod gamma;
+
+pub use gamma::HasGammaEncoding;
+
 use crate::{
-    color::{Component, Components, HasSpace, Space},
+    color::{Component, Components, CssColorSpaceId, Space},
+    color_space::{self, ColorSpace},
     math::{transform, transform_3x3, Transform},
     models::xyz::{ToXyz, XyzD50, XyzD65, D50, D65},
 };
@@ -9,176 +14,23 @@ use crate::{
 use super::xyz::Xyz;
 
 mod encoding {
-    use crate::color::Components;
-
     /// This trait is used to identity tags that specify gamma encoding.
     pub trait Encoding {}
 
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub struct GammaEncoded;
+
     impl Encoding for GammaEncoded {}
 
-    #[derive(Debug)]
+    #[derive(Clone, Debug)]
     pub struct LinearLight;
+
     impl Encoding for LinearLight {}
-
-    pub trait GammaConversion {
-        fn to_gamma_encoded(from: &Components) -> Components;
-        fn to_linear_light(from: &Components) -> Components;
-    }
-}
-
-mod space {
-    use crate::color::{Component, Components};
-
-    use super::encoding::GammaConversion;
-
-    /// This trait is used to identify tags that specify a color space/notation.
-    pub trait Space {}
-
-    /// Tag for the sRGB color space.
-    #[derive(Debug)]
-    pub struct Srgb;
-
-    impl Space for Srgb {}
-
-    impl GammaConversion for Srgb {
-        fn to_gamma_encoded(from: &Components) -> Components {
-            from.map(|value| {
-                let abs = value.abs();
-
-                if abs > 0.0031308 {
-                    value.signum() * (1.055 * abs.powf(1.0 / 2.4) - 0.055)
-                } else {
-                    12.92 * value
-                }
-            })
-        }
-
-        fn to_linear_light(from: &Components) -> Components {
-            from.map(|value| {
-                let abs = value.abs();
-
-                if abs < 0.04045 {
-                    value / 12.92
-                } else {
-                    value.signum() * ((abs + 0.055) / 1.055).powf(2.4)
-                }
-            })
-        }
-    }
-
-    /// Tag for the DisplayP3 color space.
-    #[derive(Debug)]
-    pub struct DisplayP3;
-
-    impl Space for DisplayP3 {}
-
-    impl GammaConversion for DisplayP3 {
-        fn to_gamma_encoded(from: &Components) -> Components {
-            Srgb::to_gamma_encoded(from)
-        }
-
-        fn to_linear_light(from: &Components) -> Components {
-            Srgb::to_linear_light(from)
-        }
-    }
-
-    /// Tag for the a98-rgb color space.
-    #[derive(Debug)]
-    pub struct A98Rgb;
-
-    impl Space for A98Rgb {}
-
-    impl GammaConversion for A98Rgb {
-        fn to_gamma_encoded(from: &Components) -> Components {
-            from.map(|v| v.signum() * v.abs().powf(256.0 / 563.0))
-        }
-
-        fn to_linear_light(from: &Components) -> Components {
-            from.map(|v| v.signum() * v.abs().powf(563.0 / 256.0))
-        }
-    }
-
-    /// Tag for the ProPhoto RGB color space.
-    #[derive(Debug)]
-    pub struct ProPhotoRgb;
-
-    impl Space for ProPhotoRgb {}
-
-    impl GammaConversion for ProPhotoRgb {
-        fn to_gamma_encoded(from: &Components) -> Components {
-            const E: Component = 1.0 / 512.0;
-
-            from.map(|v| {
-                let abs = v.abs();
-
-                if abs >= E {
-                    v.signum() * abs.powf(1.0 / 1.8)
-                } else {
-                    16.0 * v
-                }
-            })
-        }
-
-        fn to_linear_light(from: &Components) -> Components {
-            const E: Component = 16.0 / 512.0;
-
-            from.map(|v| {
-                let abs = v.abs();
-
-                if abs <= E {
-                    v / 16.0
-                } else {
-                    v.signum() * abs.powf(1.8)
-                }
-            })
-        }
-    }
-
-    /// Tag for the Rec2020 color space.
-    #[derive(Debug)]
-    pub struct Rec2020;
-
-    impl Rec2020 {
-        #[allow(clippy::excessive_precision)]
-        const ALPHA: Component = 1.09929682680944;
-        #[allow(clippy::excessive_precision)]
-        const BETA: Component = 0.018053968510807;
-    }
-
-    impl Space for Rec2020 {}
-
-    impl GammaConversion for Rec2020 {
-        fn to_gamma_encoded(from: &Components) -> Components {
-            from.map(|v| {
-                let abs = v.abs();
-
-                if abs > Self::BETA {
-                    v.signum() * (Self::ALPHA * abs.powf(0.45) - (Self::ALPHA - 1.0))
-                } else {
-                    4.5 * v
-                }
-            })
-        }
-
-        fn to_linear_light(from: &Components) -> Components {
-            from.map(|v| {
-                let abs = v.abs();
-
-                if abs < Self::BETA * 4.5 {
-                    v / 4.5
-                } else {
-                    v.signum() * ((abs + Self::ALPHA - 1.0) / Self::ALPHA).powf(1.0 / 0.45)
-                }
-            })
-        }
-    }
 }
 
 camelion_macros::gen_model! {
     /// A color specified in the sRGB color space.
-    pub struct Rgb<S: space::Space, E: encoding::Encoding> {
+    pub struct Rgb<S: ColorSpace, E: encoding::Encoding> {
         /// The red component of the color.
         pub red: Component,
         /// The green component of the color.
@@ -188,7 +40,7 @@ camelion_macros::gen_model! {
     }
 }
 
-impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded> {
+impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::GammaEncoded> {
     /// Convert this model from gamma encoded to linear light.
     pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
         let Components(red, green, blue) =
@@ -197,7 +49,7 @@ impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::GammaEncoded>
     }
 }
 
-impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::LinearLight> {
+impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::LinearLight> {
     /// Convert this model from linear light to gamma encoded.
     pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
         let Components(red, green, blue) =
@@ -207,13 +59,13 @@ impl<S: space::Space + encoding::GammaConversion> Rgb<S, encoding::LinearLight> 
 }
 
 /// Model for a color in the sRGB color space with gamma encoding.
-pub type Srgb = Rgb<space::Srgb, encoding::GammaEncoded>;
+pub type Srgb = Rgb<color_space::Srgb, encoding::GammaEncoded>;
 
-impl HasSpace for Srgb {
-    const SPACE: Space = Space::Srgb;
+impl CssColorSpaceId for Srgb {
+    const ID: Space = Space::Srgb;
 }
 
-impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
+impl From<Xyz<D65>> for Rgb<color_space::Srgb, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
@@ -227,8 +79,10 @@ impl From<Xyz<D65>> for Rgb<space::Srgb, encoding::LinearLight> {
     }
 }
 
-impl ToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
-    fn to_xyz(&self) -> Xyz<D65> {
+impl ToXyz for Rgb<color_space::Srgb, encoding::LinearLight> {
+    type WhitePoint = D65;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = transform_3x3(
@@ -242,24 +96,26 @@ impl ToXyz<D65> for Rgb<space::Srgb, encoding::LinearLight> {
 }
 
 /// Model for a color in the sRGB color space with no gamma encoding.
-pub type SrgbLinear = Rgb<space::Srgb, encoding::LinearLight>;
+pub type SrgbLinear = Rgb<color_space::Srgb, encoding::LinearLight>;
 
-impl HasSpace for SrgbLinear {
-    const SPACE: Space = Space::SrgbLinear;
+impl CssColorSpaceId for SrgbLinear {
+    const ID: Space = Space::SrgbLinear;
 }
 
 /// Model for a color in the DisplayP3 color space with gamma encoding.
-pub type DisplayP3 = Rgb<space::DisplayP3, encoding::GammaEncoded>;
+pub type DisplayP3 = Rgb<color_space::DisplayP3, encoding::GammaEncoded>;
 
 /// Model for a color in the DisplayP3 color space without gamma encoding.
-pub type DisplayP3Linear = Rgb<space::DisplayP3, encoding::LinearLight>;
+pub type DisplayP3Linear = Rgb<color_space::DisplayP3, encoding::LinearLight>;
 
-impl HasSpace for DisplayP3 {
-    const SPACE: Space = Space::DisplayP3;
+impl CssColorSpaceId for DisplayP3 {
+    const ID: Space = Space::DisplayP3;
 }
 
-impl ToXyz<D65> for DisplayP3Linear {
-    fn to_xyz(&self) -> Xyz<D65> {
+impl ToXyz for DisplayP3Linear {
+    type WhitePoint = D65;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = transform_3x3(
@@ -272,7 +128,7 @@ impl ToXyz<D65> for DisplayP3Linear {
     }
 }
 
-impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
+impl From<Xyz<D65>> for Rgb<color_space::DisplayP3, encoding::LinearLight> {
     fn from(value: Xyz<D65>) -> Self {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
@@ -287,17 +143,19 @@ impl From<Xyz<D65>> for Rgb<space::DisplayP3, encoding::LinearLight> {
 }
 
 /// Model for a color in the a98 RGB color space with gamma encoding.
-pub type A98Rgb = Rgb<space::A98Rgb, encoding::GammaEncoded>;
+pub type A98Rgb = Rgb<color_space::A98Rgb, encoding::GammaEncoded>;
 
 /// Model for a color in the a98 RGB color space without gamma encoding.
-pub type A98RgbLinear = Rgb<space::A98Rgb, encoding::LinearLight>;
+pub type A98RgbLinear = Rgb<color_space::A98Rgb, encoding::LinearLight>;
 
-impl HasSpace for A98Rgb {
-    const SPACE: Space = Space::A98Rgb;
+impl CssColorSpaceId for A98Rgb {
+    const ID: Space = Space::A98Rgb;
 }
 
-impl ToXyz<D65> for A98RgbLinear {
-    fn to_xyz(&self) -> Xyz<D65> {
+impl ToXyz for A98RgbLinear {
+    type WhitePoint = D65;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = transform_3x3(
@@ -325,17 +183,19 @@ impl From<XyzD65> for A98RgbLinear {
 }
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
-pub type ProPhotoRgb = Rgb<space::ProPhotoRgb, encoding::GammaEncoded>;
+pub type ProPhotoRgb = Rgb<color_space::ProPhotoRgb, encoding::GammaEncoded>;
 
 /// Model for a color in the ProPhoto RGB color space without gamma encoding.
-pub type ProPhotoRgbLinear = Rgb<space::ProPhotoRgb, encoding::LinearLight>;
+pub type ProPhotoRgbLinear = Rgb<color_space::ProPhotoRgb, encoding::LinearLight>;
 
-impl HasSpace for ProPhotoRgb {
-    const SPACE: Space = Space::ProPhotoRgb;
+impl CssColorSpaceId for ProPhotoRgb {
+    const ID: Space = Space::ProPhotoRgb;
 }
 
-impl ToXyz<D50> for ProPhotoRgbLinear {
-    fn to_xyz(&self) -> Xyz<D50> {
+impl ToXyz for ProPhotoRgbLinear {
+    type WhitePoint = D50;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = transform_3x3(
@@ -363,17 +223,19 @@ impl From<XyzD50> for ProPhotoRgbLinear {
 }
 
 /// Model for a color in the ProPhoto RGB color space with gamma encoding.
-pub type Rec2020 = Rgb<space::Rec2020, encoding::GammaEncoded>;
+pub type Rec2020 = Rgb<color_space::Rec2020, encoding::GammaEncoded>;
 
 /// Model for a color in the ProPhoto RGB color space without gamma encoding.
-pub type Rec2020Linear = Rgb<space::Rec2020, encoding::LinearLight>;
+pub type Rec2020Linear = Rgb<color_space::Rec2020, encoding::LinearLight>;
 
-impl HasSpace for Rec2020 {
-    const SPACE: Space = Space::Rec2020;
+impl CssColorSpaceId for Rec2020 {
+    const ID: Space = Space::Rec2020;
 }
 
-impl ToXyz<D65> for Rec2020Linear {
-    fn to_xyz(&self) -> Xyz<D65> {
+impl ToXyz for Rec2020Linear {
+    type WhitePoint = D65;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const TO_XYZ: Transform = transform_3x3(

@@ -100,10 +100,13 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl #impl_gen crate::models::Model for #struct_name #type_gen where Self: crate::color::HasSpace {
+        impl #impl_gen crate::models::Model for #struct_name #type_gen
+        where
+            Self: crate::color::CssColorSpaceId
+        {
             fn to_color(&self, alpha: Option<crate::color::Component>) -> crate::color::Color {
                 crate::color::Color::new(
-                    <Self as crate::color::HasSpace>::SPACE,
+                    <Self as crate::color::CssColorSpaceId>::ID,
                     if self.#field1.is_nan() { None } else { Some(self.#field1) },
                     if self.#field2.is_nan() { None } else { Some(self.#field2) },
                     if self.#field3.is_nan() { None } else { Some(self.#field3) },

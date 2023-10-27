@@ -24,6 +24,7 @@
 mod test;
 
 mod color;
+mod color_space;
 mod convert;
 mod gamut;
 mod interpolate;

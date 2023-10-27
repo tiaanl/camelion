@@ -2,26 +2,15 @@
 //! CIE-Lch, Oklab and Oklch.
 
 use crate::{
-    color::{Component, Components, HasSpace, Space},
+    color::{Component, Components, CssColorSpaceId, Space},
+    color_space,
     math::{almost_zero, normalize_hue, transform, transform_3x3, Transform},
     models::xyz::{ToXyz, WhitePoint, Xyz, XyzD50, XyzD65, D50, D65},
 };
 
-mod space {
-    pub trait Space {}
-
-    #[derive(Clone, Debug)]
-    pub struct Lab;
-    impl Space for Lab {}
-
-    #[derive(Clone, Debug)]
-    pub struct Oklab;
-    impl Space for Oklab {}
-}
-
 camelion_macros::gen_model! {
     /// The model for a color specified in the rectangular orthogonal form.
-    pub struct Rectangular<S: space::Space> {
+    pub struct Rectangular<S: color_space::ColorSpace> {
         /// The lightness component.
         pub lightness: Component,
         /// The a component.
@@ -31,7 +20,7 @@ camelion_macros::gen_model! {
     }
 }
 
-impl<S: space::Space> Rectangular<S> {
+impl<S: color_space::ColorSpace> Rectangular<S> {
     /// Convert this orthogonal rectangular model into its cylindrical polar
     /// form.
     pub fn to_polar(&self) -> Polar<S> {
@@ -48,7 +37,7 @@ impl<S: space::Space> Rectangular<S> {
 
 camelion_macros::gen_model! {
     /// The model for a color specified in the cylindrical polar form.
-    pub struct Polar<S: space::Space> {
+    pub struct Polar<S: color_space::ColorSpace> {
         /// The lightness component.
         pub lightness: Component,
         /// The chroma component.
@@ -58,7 +47,7 @@ camelion_macros::gen_model! {
     }
 }
 
-impl<S: space::Space> Polar<S> {
+impl<S: color_space::ColorSpace> Polar<S> {
     /// Convert this cylindrical polar model into its orthogonal rectangular
     /// form.
     pub fn to_rectangular(&self) -> Rectangular<S> {
@@ -71,14 +60,16 @@ impl<S: space::Space> Polar<S> {
 }
 
 /// The model for a color specified in the CIE-Lab color space with the rectangular orthogonal form.
-pub type Lab = Rectangular<space::Lab>;
+pub type Lab = Rectangular<color_space::Lab>;
 
-impl HasSpace for Lab {
-    const SPACE: Space = Space::Lab;
+impl CssColorSpaceId for Lab {
+    const ID: Space = Space::Lab;
 }
 
-impl ToXyz<D50> for Lab {
-    fn to_xyz(&self) -> Xyz<D50> {
+impl ToXyz for Lab {
+    type WhitePoint = D50;
+
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         const KAPPA: Component = 24389.0 / 27.0;
         const EPSILON: Component = 216.0 / 24389.0;
 
@@ -147,17 +138,17 @@ impl From<XyzD50> for Lab {
 }
 
 /// The model for a color specified in the CIE-Lab color space with the cylindrical polar form.
-pub type Lch = Polar<space::Lab>;
+pub type Lch = Polar<color_space::Lab>;
 
-impl HasSpace for Lch {
-    const SPACE: Space = Space::Lch;
+impl CssColorSpaceId for Lch {
+    const ID: Space = Space::Lch;
 }
 
 /// The model for a color specified in the oklab color space with the rectangular orthogonal form.
-pub type Oklab = Rectangular<space::Oklab>;
+pub type Oklab = Rectangular<color_space::Oklab>;
 
-impl HasSpace for Oklab {
-    const SPACE: Space = Space::Oklab;
+impl CssColorSpaceId for Oklab {
+    const ID: Space = Space::Oklab;
 }
 
 impl From<XyzD65> for Oklab {
@@ -184,8 +175,9 @@ impl From<XyzD65> for Oklab {
     }
 }
 
-impl ToXyz<D65> for Oklab {
-    fn to_xyz(&self) -> Xyz<D65> {
+impl ToXyz for Oklab {
+    type WhitePoint = D65;
+    fn to_xyz(&self) -> Xyz<Self::WhitePoint> {
         #[rustfmt::skip]
         #[allow(clippy::excessive_precision)]
         const OKLAB_TO_LMS: Transform = transform_3x3(
@@ -209,10 +201,10 @@ impl ToXyz<D65> for Oklab {
 }
 
 /// The model for a color specified in the oklab color space with the cylindrical polar form.
-pub type Oklch = Polar<space::Oklab>;
+pub type Oklch = Polar<color_space::Oklab>;
 
-impl HasSpace for Oklch {
-    const SPACE: Space = Space::Oklch;
+impl CssColorSpaceId for Oklch {
+    const ID: Space = Space::Oklch;
 }
 
 #[cfg(test)]

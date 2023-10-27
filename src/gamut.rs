@@ -23,7 +23,7 @@ impl Color {
     /// If this color is not within gamut limits of it's color space, then a
     /// gamut mapping is applied to map the components into range.
     /// <https://drafts.csswg.org/css-color-4/#binsearch>
-    pub fn map_into_gamut_range(&self) -> Self {
+    pub fn map_into_gamut_limits(&self) -> Self {
         // 1. if destination has no gamut limits (XYZ-D65, XYZ-D50, Lab, LCH,
         //    Oklab, Oklch) return origin.
         if matches!(
@@ -202,7 +202,7 @@ mod tests {
     fn map_red() {
         // color(display-p3 1 0 0)
         let source = Color::new(Space::DisplayP3, 1.0, 0.0, 0.0, 1.0).to_space(Space::Srgb);
-        let mapped = source.map_into_gamut_range();
+        let mapped = source.map_into_gamut_limits();
 
         assert_component_eq!(mapped.components.0, 1.0);
         assert_component_eq!(mapped.components.1, 0.044557023834955904);

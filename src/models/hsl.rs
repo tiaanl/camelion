@@ -1,6 +1,6 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::color::{Component, HasSpace, Space};
+use crate::color::{Component, CssColorSpaceId, Space};
 
 camelion_macros::gen_model! {
     /// A color specified with the HSL notation in the sRGB color space.
@@ -14,8 +14,8 @@ camelion_macros::gen_model! {
     }
 }
 
-impl HasSpace for Hsl {
-    const SPACE: Space = Space::Hsl;
+impl CssColorSpaceId for Hsl {
+    const ID: Space = Space::Hsl;
 }
 
 #[cfg(test)]

@@ -95,8 +95,8 @@ pub enum Space {
     XyzD65 = 13,
 }
 
-pub trait HasSpace {
-    const SPACE: Space;
+pub trait CssColorSpaceId {
+    const ID: Space;
 }
 
 /// Used to hold any CSS supported color.
