@@ -89,7 +89,7 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
             }
 
             /// Convert this model into generic components.
-            pub fn into_components(self) -> crate::color::Components {
+            pub fn to_components(&self) -> crate::color::Components {
                 crate::color::Components(self.#field1, self.#field2, self.#field3)
             }
         }

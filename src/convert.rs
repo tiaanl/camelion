@@ -25,8 +25,8 @@ use crate::{
     color::{Color, Components, Space},
     models::{
         A98Rgb, A98RgbLinear, DisplayP3, DisplayP3Linear, Hsl, Hwb, Lab, Lch, Model, Oklab, Oklch,
-        ProPhotoRgb, ProPhotoRgbLinear, Rec2020, Rec2020Linear, Srgb, SrgbLinear, ToXyz, XyzD50,
-        XyzD65, D50, D65,
+        ProPhotoRgb, ProPhotoRgbLinear, Rec2020, Rec2020Linear, Srgb, SrgbLinear, XyzD50, XyzD65,
+        D50, D65,
     },
 };
 
@@ -87,52 +87,29 @@ impl Color {
             _ => {}
         }
 
+        macro_rules! to_base {
+            ($m:ident) => {{
+                self.as_model::<$m>().to_base()
+            }};
+        }
+
         // The rest converts to XyzD50.
-        let xyz: XyzD50 = match self.space {
-            S::Srgb => self
-                .as_model::<Srgb>()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
-            S::SrgbLinear => self.as_model::<SrgbLinear>().to_xyz().transfer(),
-            S::Hsl => self
-                .as_model::<Hsl>()
-                .to_srgb()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
-            S::Hwb => self
-                .as_model::<Hwb>()
-                .to_srgb()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
-            S::Lab => self.as_model::<Lab>().to_xyz(),
-            S::Lch => self.as_model::<Lch>().to_rectangular().to_xyz(),
-            S::Oklab => self.as_model::<Oklab>().to_xyz().transfer(),
-            S::Oklch => self
-                .as_model::<Oklch>()
-                .to_rectangular()
-                .to_xyz()
-                .transfer(),
-            S::XyzD50 => self.as_model::<XyzD50>().clone(),
-            S::XyzD65 => self.as_model::<XyzD65>().transfer(),
-            S::DisplayP3 => self
-                .as_model::<DisplayP3>()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
-            S::A98Rgb => self
-                .as_model::<A98Rgb>()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
-            S::ProPhotoRgb => self.as_model::<ProPhotoRgb>().to_linear_light().to_xyz(),
-            S::Rec2020 => self
-                .as_model::<Rec2020>()
-                .to_linear_light()
-                .to_xyz()
-                .transfer(),
+        use crate::models::ToBase;
+        let xyz = match self.space {
+            S::Srgb => to_base!(Srgb),
+            S::SrgbLinear => to_base!(SrgbLinear),
+            S::Hsl => to_base!(Hsl),
+            S::Hwb => to_base!(Hwb),
+            S::Lab => to_base!(Lab),
+            S::Lch => to_base!(Lch),
+            S::Oklab => to_base!(Oklab),
+            S::Oklch => to_base!(Oklch),
+            S::XyzD50 => to_base!(XyzD50),
+            S::XyzD65 => to_base!(XyzD65),
+            S::DisplayP3 => to_base!(DisplayP3),
+            S::A98Rgb => to_base!(A98Rgb),
+            S::ProPhotoRgb => to_base!(ProPhotoRgb),
+            S::Rec2020 => to_base!(Rec2020),
         };
 
         match space {
@@ -512,9 +489,9 @@ mod tests {
         for &(source_space, source_0, source_1, source_2, dest_space, dest_0, dest_1, dest_2) in
             TESTS
         {
+            println!("{:?} -> {:?}", source_space, dest_space);
             let source = Color::new(source_space, source_0, source_1, source_2, 1.0);
             let dest = source.to_space(dest_space);
-            println!("{:?} -> {:?}", source_space, dest_space);
             assert_component_eq!(dest.components.0, dest_0);
             assert_component_eq!(dest.components.1, dest_1);
             assert_component_eq!(dest.components.2, dest_2);

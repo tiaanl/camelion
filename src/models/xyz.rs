@@ -72,6 +72,18 @@ impl TransferWhitePoint<D50> for D65 {
     }
 }
 
+impl<W: WhitePoint> TransferWhitePoint<W> for W
+where
+    W: Clone,
+{
+    #[inline]
+    fn transfer(from: &Xyz<Self>) -> Xyz<W> {
+        // Transferring between the same white point references should be a
+        // noop.
+        from.clone()
+    }
+}
+
 /// Specify that a color model supports conversion to CIE-XYZ.
 pub trait ToXyz {
     /// The white point reference that the color converts to.

@@ -4,6 +4,7 @@
 
 use crate::color::{Color, Component};
 
+mod base;
 mod hsl;
 mod hwb;
 mod lab;
@@ -15,6 +16,8 @@ pub use hwb::*;
 pub use lab::*;
 pub use rgb::*;
 pub use xyz::*;
+
+pub use base::ToBase;
 
 /// A trait implemented for color models that can be converted to and from a
 /// generic [`Color`].

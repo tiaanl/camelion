@@ -13,24 +13,27 @@ use crate::{
 
 use super::xyz::Xyz;
 
-mod encoding {
+/// Tags for RGB models that are either gamma encoded or linear light.
+pub mod encoding {
     /// This trait is used to identity tags that specify gamma encoding.
-    pub trait Encoding {}
+    pub trait GammaEncoding {}
 
+    /// Tag for a gamma encoded RGB color.
     #[derive(Clone, Debug)]
     pub struct GammaEncoded;
 
-    impl Encoding for GammaEncoded {}
+    impl GammaEncoding for GammaEncoded {}
 
+    /// Tag for a linear light RGB color.
     #[derive(Clone, Debug)]
     pub struct LinearLight;
 
-    impl Encoding for LinearLight {}
+    impl GammaEncoding for LinearLight {}
 }
 
 camelion_macros::gen_model! {
     /// A color specified in the sRGB color space.
-    pub struct Rgb<S: ColorSpace, E: encoding::Encoding> {
+    pub struct Rgb<S: ColorSpace, E: encoding::GammaEncoding> {
         /// The red component of the color.
         pub red: Component,
         /// The green component of the color.
@@ -43,8 +46,7 @@ camelion_macros::gen_model! {
 impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::GammaEncoded> {
     /// Convert this model from gamma encoded to linear light.
     pub fn to_linear_light(&self) -> Rgb<S, encoding::LinearLight> {
-        let Components(red, green, blue) =
-            S::to_linear_light(&Components(self.red, self.green, self.blue));
+        let Components(red, green, blue) = S::to_linear_light(&self.to_components());
         Rgb::new(red, green, blue)
     }
 }
@@ -52,9 +54,26 @@ impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::GammaEncoded> {
 impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::LinearLight> {
     /// Convert this model from linear light to gamma encoded.
     pub fn to_gamma_encoded(&self) -> Rgb<S, encoding::GammaEncoded> {
-        let Components(red, green, blue) =
-            S::to_gamma_encoded(&Components(self.red, self.green, self.blue));
+        let Components(red, green, blue) = S::to_gamma_encoded(&self.to_components());
         Rgb::new(red, green, blue)
+    }
+}
+
+/// Trait for RGB models to return a color without gamma encoding.
+pub trait WithoutGammaEncoding<S: ColorSpace> {
+    /// Return the RGB color without gamma encoding.
+    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight>;
+}
+
+impl<S: ColorSpace + HasGammaEncoding> WithoutGammaEncoding<S> for Rgb<S, encoding::GammaEncoded> {
+    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight> {
+        self.to_linear_light()
+    }
+}
+
+impl<S: ColorSpace + HasGammaEncoding> WithoutGammaEncoding<S> for Rgb<S, encoding::LinearLight> {
+    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight> {
+        self.clone()
     }
 }
 
@@ -275,5 +294,20 @@ mod tests {
         assert_eq!(c.components.1, 1.0);
         assert_eq!(c.components.2, 1.0);
         assert_eq!(c.flags, Flags::C0_IS_NONE);
+    }
+
+    #[test]
+    fn test_without_gamma_encoding() {
+        let c = Srgb::new(0.5, 0.5, 0.5);
+        let without = c.without_gamma_encoding();
+        assert_ne!(without.red, 0.5);
+        assert_ne!(without.green, 0.5);
+        assert_ne!(without.blue, 0.5);
+
+        let c = SrgbLinear::new(0.5, 0.5, 0.5);
+        let without = c.without_gamma_encoding();
+        assert_eq!(without.red, 0.5);
+        assert_eq!(without.green, 0.5);
+        assert_eq!(without.blue, 0.5);
     }
 }
