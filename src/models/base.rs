@@ -5,10 +5,12 @@ use super::WithoutGammaEncoding;
 use crate::models::ToXyz;
 use crate::{color_space::ColorSpace, models};
 
-// TODO(tlouw): This should be changed to D65, because only Lab and ProPhotoRgb
-//              uses D50 as a white point and in general would result in less
-//              matrix multiplications.
-pub type Base = models::XyzD50;
+// We use XYZ with a D65 white point as the base color space for converting
+// between color spaces.
+// D65 is used by many more color spaces than D50, so it's a better choice for
+// not having to do unnecessary matrix multiplications.
+pub type BaseWhitePoint = models::D65;
+pub type Base = models::Xyz<BaseWhitePoint>;
 
 /// Used to convert any model to a base color space.
 pub trait ToBase {
@@ -21,7 +23,7 @@ where
     models::Rgb<S, E>: WithoutGammaEncoding<S>,
     models::Rgb<S, models::rgb::encoding::LinearLight>: models::ToXyz,
     <models::rgb::Rgb<S, models::rgb::encoding::LinearLight> as models::ToXyz>::WhitePoint:
-        models::xyz::TransferWhitePoint<models::xyz::D50>,
+        models::xyz::TransferWhitePoint<BaseWhitePoint>,
 {
     fn to_base(&self) -> Base {
         self.without_gamma_encoding().to_xyz().transfer()
@@ -43,7 +45,7 @@ impl ToBase for models::Hwb {
 impl<S: ColorSpace> ToBase for models::Rectangular<S>
 where
     models::Rectangular<S>: ToXyz,
-    <models::Rectangular<S> as ToXyz>::WhitePoint: models::xyz::TransferWhitePoint<models::D50>,
+    <models::Rectangular<S> as ToXyz>::WhitePoint: models::xyz::TransferWhitePoint<BaseWhitePoint>,
 {
     fn to_base(&self) -> Base {
         self.to_xyz().transfer()
@@ -62,7 +64,7 @@ where
 
 impl<W: models::WhitePoint> ToBase for models::Xyz<W>
 where
-    W: models::xyz::TransferWhitePoint<models::D50>,
+    W: models::xyz::TransferWhitePoint<BaseWhitePoint>,
 {
     fn to_base(&self) -> Base {
         self.transfer()
