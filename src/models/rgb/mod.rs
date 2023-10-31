@@ -8,10 +8,8 @@ use crate::{
     color::{Component, Components, CssColorSpaceId, Space},
     color_space::{self, ColorSpace},
     math::{transform, transform_3x3, Transform},
-    models::xyz::{ToXyz, XyzD50, XyzD65, D50, D65},
+    models::xyz::{ToXyz, Xyz, XyzD50, XyzD65, D50, D65},
 };
-
-use super::xyz::Xyz;
 
 /// Tags for RGB models that are either gamma encoded or linear light.
 pub mod encoding {

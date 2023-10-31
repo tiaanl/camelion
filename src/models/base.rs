@@ -5,11 +5,12 @@ use super::WithoutGammaEncoding;
 use crate::models::ToXyz;
 use crate::{color_space::ColorSpace, models};
 
-// We use XYZ with a D65 white point as the base color space for converting
-// between color spaces.
 // D65 is used by many more color spaces than D50, so it's a better choice for
 // not having to do unnecessary matrix multiplications.
+
+/// The white point reference used by the base model.
 pub type BaseWhitePoint = models::D65;
+/// The models used as the base color for color conversions.
 pub type Base = models::Xyz<BaseWhitePoint>;
 
 /// Used to convert any model to a base color space.

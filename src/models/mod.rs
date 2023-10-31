@@ -17,7 +17,7 @@ pub use lab::*;
 pub use rgb::*;
 pub use xyz::*;
 
-pub use base::ToBase;
+pub use base::{Base, BaseWhitePoint, ToBase};
 
 /// A trait implemented for color models that can be converted to and from a
 /// generic [`Color`].
