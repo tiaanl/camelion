@@ -1,0 +1,16 @@
+[package]
+name = "camelion"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+f64 = []
+
+[dependencies]
+bitflags = "2.4"
+euclid = "0.22"
+num-traits = "*"
+camelion-macros = { path = "../macros" }
+
+[dev-dependencies]
+approx = "0.5.1"
