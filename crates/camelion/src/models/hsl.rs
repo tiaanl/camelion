@@ -1,6 +1,9 @@
 //! Model a color with the HSL notation in the sRGB color space.
 
-use crate::color::{Component, CssColorSpaceId, Space};
+use crate::{
+    color::{CssColorSpaceId, Space},
+    Component,
+};
 
 camelion_macros::gen_model! {
     /// A color specified with the HSL notation in the sRGB color space.

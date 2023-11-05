@@ -2,10 +2,11 @@
 //! CIE-Lch, Oklab and Oklch.
 
 use crate::{
-    color::{Component, Components, CssColorSpaceId, Space},
+    color::{Components, CssColorSpaceId, Space},
     color_space,
     math::{almost_zero, normalize_hue, transform, transform_3x3, Transform},
     models::xyz::{ToXyz, WhitePoint, Xyz, XyzD50, XyzD65, D50, D65},
+    Component,
 };
 
 camelion_macros::gen_model! {

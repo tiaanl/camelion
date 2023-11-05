@@ -1,5 +1,8 @@
-use crate::color::{Color, Component, Flags, Space};
-use crate::math::normalize_hue;
+use crate::{
+    color::{Color, Flags, Space},
+    math::normalize_hue,
+    Component,
+};
 
 impl Color {
     /// Create an interpolation that will interpolate from `self` to `other` using the specified [`Space`](color space).

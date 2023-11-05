@@ -3,15 +3,7 @@
 
 use bitflags::bitflags;
 
-use crate::models::Model;
-
-#[cfg(not(feature = "f64"))]
-/// A 32-bit floating point value that all components are stored as.
-pub type Component = f32;
-
-#[cfg(feature = "f64")]
-/// A 64-bit floating point value that all components are stored as.
-pub type Component = f64;
+use crate::{models::Model, Component};
 
 /// Represent the three components that describe any color.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -186,8 +186,9 @@ impl Hwb {
 
 mod util {
     use crate::{
-        color::{Component, Components},
+        color::Components,
         math::{almost_zero, normalize, normalize_hue},
+        Component,
     };
 
     /// Calculate the hue from RGB components and return it along with the min

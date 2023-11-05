@@ -1,6 +1,6 @@
 //! Math utility functions.
 
-use crate::color::{Component, Components};
+use crate::{color::Components, Component};
 use euclid::default::{Transform3D, Vector3D};
 use std::marker::PhantomData;
 

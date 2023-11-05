@@ -5,10 +5,11 @@ mod gamma;
 pub use gamma::HasGammaEncoding;
 
 use crate::{
-    color::{Component, Components, CssColorSpaceId, Space},
+    color::{Components, CssColorSpaceId, Space},
     color_space::{self, ColorSpace},
     math::{transform, transform_3x3, Transform},
     models::xyz::{ToXyz, Xyz, XyzD50, XyzD65, D50, D65},
+    Component,
 };
 
 /// Tags for RGB models that are either gamma encoded or linear light.

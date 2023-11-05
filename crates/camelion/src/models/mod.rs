@@ -2,7 +2,7 @@
 //! form. They represent a type safe way to convert between different color
 //! spaces and forms.
 
-use crate::color::{Color, Component};
+use crate::{color::Color, Component};
 
 mod base;
 mod hsl;

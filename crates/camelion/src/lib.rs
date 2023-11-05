@@ -30,11 +30,19 @@ mod gamut;
 mod interpolate;
 mod math;
 
+#[cfg(not(feature = "f64"))]
+/// A 32-bit floating point value that all components are stored as.
+pub type Component = f32;
+
+#[cfg(feature = "f64")]
+/// A 64-bit floating point value that all components are stored as.
+pub type Component = f64;
+
 // All the models can be accessed through the module.
 pub mod models;
 
 // Most common color types.
-pub use color::{Color, Component, ComponentDetails, Components, Flags, Space};
+pub use color::{Color, ComponentDetails, Components, Flags, Space};
 
 // Color interpolation types.
 pub use interpolate::{HueInterpolationMethod, Interpolation};

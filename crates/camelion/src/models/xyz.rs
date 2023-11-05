@@ -1,8 +1,9 @@
 //! Model a color in the CIE-XYZ color space.
 
 use crate::{
-    color::{Component, Components, CssColorSpaceId, Space},
+    color::{Components, CssColorSpaceId, Space},
     math::{transform, transform_3x3, Transform},
+    Component,
 };
 
 /// This trait is used for types that represent a CIE-XYZ white point

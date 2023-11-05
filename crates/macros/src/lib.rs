@@ -76,9 +76,9 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
         impl #impl_gen #struct_name #type_gen {
             /// Create a new color having this color space.
             pub fn new(
-                #field1: crate::color::Component,
-                #field2: crate::color::Component,
-                #field3: crate::color::Component,
+                #field1: crate::Component,
+                #field2: crate::Component,
+                #field3: crate::Component,
             ) -> Self {
                 Self {
                     #field1,
@@ -104,7 +104,7 @@ pub fn gen_model(input: TokenStream) -> TokenStream {
         where
             Self: crate::color::CssColorSpaceId
         {
-            fn to_color(&self, alpha: Option<crate::color::Component>) -> crate::color::Color {
+            fn to_color(&self, alpha: Option<crate::Component>) -> crate::color::Color {
                 crate::color::Color::new(
                     <Self as crate::color::CssColorSpaceId>::ID,
                     if self.#field1.is_nan() { None } else { Some(self.#field1) },
