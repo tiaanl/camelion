@@ -88,7 +88,7 @@ where
 /// Specify that a color model supports conversion to CIE-XYZ.
 pub trait ToXyz {
     /// The white point reference that the color converts to.
-    type WhitePoint: WhitePoint;
+    type WhitePoint: WhitePoint + Clone;
 
     /// Convert this color to CIE-XYZ.
     fn to_xyz(&self) -> Xyz<Self::WhitePoint>;

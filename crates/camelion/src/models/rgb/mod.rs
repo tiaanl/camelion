@@ -1,6 +1,7 @@
 //! Model a color in the sRGB color space.
 
 mod gamma;
+mod gamut;
 
 pub use gamma::HasGammaEncoding;
 

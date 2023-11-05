@@ -287,8 +287,11 @@ mod util {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_component_eq;
-    use crate::color::{Color, Component, Space};
+    use crate::{
+        assert_component_eq,
+        color::{Color, Space},
+        Component,
+    };
 
     #[test]
     fn test_conversions() {
