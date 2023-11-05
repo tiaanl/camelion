@@ -83,8 +83,9 @@ fn main() {
         });
     }
 
-    img.save("out.png")
-        .expect("could not write image to out.png");
+    let root = std::path::PathBuf::from(file!());
+    let path = root.parent().unwrap().parent().unwrap().join("out.png");
+    img.save(path).expect("could not write image to out.png");
 }
 
 fn measure_line(font: &Font, text: &str, scale: Scale) -> (f32, f32) {
