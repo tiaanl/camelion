@@ -1,13 +1,13 @@
-use camelion::{Color, Space};
+use camelion::{Color, Component, Space};
 use image::{Rgba, RgbaImage};
 use rusttype::{point, Font, Scale};
 
-const WIDTH: u32 = 1000;
-const HEIGHT_PER_SPACE: u32 = 100;
+const WIDTH: u32 = 480;
+const HEIGHT_PER_SPACE: u32 = 50;
 
 fn main() {
     let left = Color::new(Space::Srgb, 1.0, 0.0, 0.0, 1.0);
-    let right = Color::new(Space::Srgb, 0.0, 0.0, 1.0, 1.0);
+    let right = Color::new(Space::Srgb, 0.0, 1.0, 0.0, 1.0);
 
     let interps = [
         Space::Srgb,
@@ -34,7 +34,7 @@ fn main() {
 
     img.enumerate_rows_mut().for_each(|(_, pixels)| {
         for (x, y, pixel) in pixels {
-            let t = x as f32 / WIDTH as f32;
+            let t = x as Component / WIDTH as Component;
 
             let interp_index = y / (height / interps.len() as u32);
 
@@ -59,24 +59,29 @@ fn main() {
         }
     });
 
-    let font = Vec::from(include_bytes!("../DejaVuSans.ttf") as &[u8]);
-    let font = Font::try_from_vec(font).unwrap();
+    let print_labels = true;
 
-    let scale = Scale::uniform(HEIGHT_PER_SPACE as f32 / 2.0);
-    interps.iter().enumerate().for_each(|(i, interp)| {
-        let text = format!("{:?}", interp.space);
-        let (t_width, t_height) = measure_line(&font, text.as_str(), scale);
-        imageproc::drawing::draw_text_mut(
-            &mut img,
-            Rgba([0, 0, 0, 127]),
-            ((WIDTH as f32 / 2.0) - t_width / 2.0).round() as i32,
-            (HEIGHT_PER_SPACE as f32 * i as f32 + (HEIGHT_PER_SPACE as f32 / 2.0 - t_height / 2.0))
-                .round() as i32,
-            scale,
-            &font,
-            text.as_str(),
-        );
-    });
+    if print_labels {
+        let font = Vec::from(include_bytes!("../DejaVuSans.ttf") as &[u8]);
+        let font = Font::try_from_vec(font).unwrap();
+
+        let scale = Scale::uniform(HEIGHT_PER_SPACE as f32 / 2.0);
+        interps.iter().enumerate().for_each(|(i, interp)| {
+            let text = format!("{:?}", interp.space);
+            let (t_width, t_height) = measure_line(&font, text.as_str(), scale);
+            imageproc::drawing::draw_text_mut(
+                &mut img,
+                Rgba([0, 0, 0, 127]),
+                ((WIDTH as f32 / 2.0) - t_width / 2.0).round() as i32,
+                (HEIGHT_PER_SPACE as f32 * i as f32
+                    + (HEIGHT_PER_SPACE as f32 / 2.0 - t_height / 2.0))
+                    .round() as i32,
+                scale,
+                &font,
+                text.as_str(),
+            );
+        });
+    }
 
     img.save("out.png")
         .expect("could not write image to out.png");

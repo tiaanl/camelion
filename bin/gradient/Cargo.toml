@@ -3,6 +3,10 @@ name = "camelion-gradient"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+f64 = ["camelion/f64"]
+
 [dependencies]
 camelion = { path = "../../" }
 image = "0.24"
