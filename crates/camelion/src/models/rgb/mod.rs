@@ -59,24 +59,6 @@ impl<S: ColorSpace + HasGammaEncoding> Rgb<S, encoding::LinearLight> {
     }
 }
 
-/// Trait for RGB models to return a color without gamma encoding.
-pub trait WithoutGammaEncoding<S: ColorSpace> {
-    /// Return the RGB color without gamma encoding.
-    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight>;
-}
-
-impl<S: ColorSpace + HasGammaEncoding> WithoutGammaEncoding<S> for Rgb<S, encoding::GammaEncoded> {
-    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight> {
-        self.to_linear_light()
-    }
-}
-
-impl<S: ColorSpace + HasGammaEncoding> WithoutGammaEncoding<S> for Rgb<S, encoding::LinearLight> {
-    fn without_gamma_encoding(&self) -> Rgb<S, encoding::LinearLight> {
-        self.clone()
-    }
-}
-
 /// Model for a color in the sRGB color space with gamma encoding.
 pub type Srgb = Rgb<color_space::Srgb, encoding::GammaEncoded>;
 
@@ -294,20 +276,5 @@ mod tests {
         assert_eq!(c.components.1, 1.0);
         assert_eq!(c.components.2, 1.0);
         assert_eq!(c.flags, Flags::C0_IS_NONE);
-    }
-
-    #[test]
-    fn test_without_gamma_encoding() {
-        let c = Srgb::new(0.5, 0.5, 0.5);
-        let without = c.without_gamma_encoding();
-        assert_ne!(without.red, 0.5);
-        assert_ne!(without.green, 0.5);
-        assert_ne!(without.blue, 0.5);
-
-        let c = SrgbLinear::new(0.5, 0.5, 0.5);
-        let without = c.without_gamma_encoding();
-        assert_eq!(without.red, 0.5);
-        assert_eq!(without.green, 0.5);
-        assert_eq!(without.blue, 0.5);
     }
 }

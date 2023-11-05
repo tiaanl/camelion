@@ -1,9 +1,10 @@
 //! Functions for converting color models to a base color space common to all
 //! models.  Used for color conversion.
 
-use super::WithoutGammaEncoding;
-use crate::models::ToXyz;
-use crate::{color_space::ColorSpace, models};
+use crate::{
+    color_space::ColorSpace,
+    models::{self, ToXyz},
+};
 
 // D65 is used by many more color spaces than D50, so it's a better choice for
 // not having to do unnecessary matrix multiplications.
@@ -19,15 +20,26 @@ pub trait ToBase {
     fn to_base(&self) -> Base;
 }
 
-impl<S: ColorSpace, E: super::rgb::encoding::GammaEncoding> ToBase for models::Rgb<S, E>
+impl<S: ColorSpace> ToBase for models::Rgb<S, models::encoding::LinearLight>
 where
-    models::Rgb<S, E>: WithoutGammaEncoding<S>,
     models::Rgb<S, models::rgb::encoding::LinearLight>: models::ToXyz,
-    <models::rgb::Rgb<S, models::rgb::encoding::LinearLight> as models::ToXyz>::WhitePoint:
+    <models::rgb::Rgb<S, models::encoding::LinearLight> as models::ToXyz>::WhitePoint:
         models::xyz::TransferWhitePoint<BaseWhitePoint>,
 {
     fn to_base(&self) -> Base {
-        self.without_gamma_encoding().to_xyz().transfer()
+        self.to_xyz().transfer()
+    }
+}
+
+impl<S: ColorSpace> ToBase for models::Rgb<S, models::encoding::GammaEncoded>
+where
+    S: models::HasGammaEncoding,
+    models::Rgb<S, models::rgb::encoding::LinearLight>: models::ToXyz,
+    <models::rgb::Rgb<S, models::encoding::LinearLight> as models::ToXyz>::WhitePoint:
+        models::xyz::TransferWhitePoint<BaseWhitePoint>,
+{
+    fn to_base(&self) -> Base {
+        self.to_linear_light().to_xyz().transfer()
     }
 }
 

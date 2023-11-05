@@ -4,7 +4,7 @@ use super::encoding::{GammaEncoded, LinearLight};
 use super::HasGammaEncoding;
 use super::{encoding::GammaEncoding, Rgb};
 use crate::color_space::{self, ColorSpace};
-use crate::models::{Oklab, Oklch, Polar, ToXyz, TransferWhitePoint, Xyz, D65};
+use crate::models::{Base, Oklab, Polar, Rectangular, ToBase, ToXyz, TransferWhitePoint, D65};
 use crate::Component;
 
 type WhitePointFor<S> = <Rgb<S, LinearLight> as ToXyz>::WhitePoint;
@@ -13,11 +13,11 @@ impl<S, E> Rgb<S, E>
 where
     S: ColorSpace + HasGammaEncoding,
     E: GammaEncoding,
-    Self: Clone + AlwaysLinearLight<S>,
+    Self: Clone + From<Oklab> + ToBase,
     Rgb<S, LinearLight>: ToXyz,
     WhitePointFor<S>: TransferWhitePoint<D65>,
     D65: TransferWhitePoint<WhitePointFor<S>>,
-    Self: OklchToRgb<S, E>,
+    Oklab: From<Self>,
 {
     /// Map the color into the gamut limits of the color space.
     pub fn map_into_gamut_limit(&self) -> Self {
@@ -33,7 +33,7 @@ where
 
         // 2. let origin_Oklch be origin converted from origin color space to
         //    the Oklch color space.
-        let origin_oklch = rgb_to_oklch(self);
+        let origin_oklch = Oklab::from(self.clone()).to_polar();
 
         // 3. if the Lightness of origin_Oklch is greater than or equal to
         //    100%, return { 1 1 1 origin.alpha } in destination.
@@ -102,7 +102,7 @@ where
             //       component to chroma
             current.chroma = chroma;
 
-            current_in_space = <Self as OklchToRgb<S, E>>::oklch_to_rgb(&current);
+            current_in_space = Self::from(current.to_rectangular());
 
             // 14.3. if min_inGamut is true and also if inGamut(current) is
             //       true, set min to chroma and continue to repeat these steps.
@@ -167,97 +167,62 @@ where
     }
 }
 
-pub trait AlwaysLinearLight<S: ColorSpace> {
-    /// Convert the color to linear light.
-    fn always_linear_light(&self) -> Rgb<S, LinearLight>;
-}
-
-impl<S: ColorSpace> AlwaysLinearLight<S> for Rgb<S, LinearLight> {
-    fn always_linear_light(&self) -> Self {
-        self.clone()
+/// Convert RGB colors in color space `S` into Rectangular form in color space `T`.
+impl<S: ColorSpace, T: ColorSpace> From<Rgb<S, LinearLight>> for Rectangular<T>
+where
+    Rgb<S, LinearLight>: ToBase,
+    Self: From<Base>,
+{
+    fn from(value: Rgb<S, LinearLight>) -> Self {
+        Self::from(value.to_base())
     }
 }
 
-impl<S: ColorSpace> AlwaysLinearLight<S> for Rgb<S, GammaEncoded>
+impl<S: ColorSpace> From<Rgb<S, GammaEncoded>> for Oklab
 where
     S: HasGammaEncoding,
+    Rgb<S, LinearLight>: ToBase,
 {
-    fn always_linear_light(&self) -> Rgb<S, LinearLight> {
-        self.to_linear_light()
+    fn from(value: Rgb<S, GammaEncoded>) -> Self {
+        value.to_linear_light().to_base().into()
     }
 }
 
-fn rgb_to_oklab<S: ColorSpace, E: GammaEncoding>(rgb: &Rgb<S, E>) -> Oklab
+impl<S: ColorSpace> From<Oklab> for Rgb<S, LinearLight>
 where
-    S: ColorSpace + HasGammaEncoding,
-    E: GammaEncoding,
-    Rgb<S, E>: AlwaysLinearLight<S>,
-    Rgb<S, LinearLight>: ToXyz,
-    <Rgb<S, LinearLight> as ToXyz>::WhitePoint: TransferWhitePoint<D65>,
+    Self: From<Base>,
 {
-    rgb.always_linear_light().to_xyz().transfer::<D65>().into()
-}
-
-fn rgb_to_oklch<S: ColorSpace, E: GammaEncoding>(rgb: &Rgb<S, E>) -> Oklch
-where
-    S: ColorSpace + HasGammaEncoding,
-    E: GammaEncoding,
-    Rgb<S, E>: AlwaysLinearLight<S>,
-    Rgb<S, LinearLight>: ToXyz,
-    <Rgb<S, LinearLight> as ToXyz>::WhitePoint: TransferWhitePoint<D65>,
-{
-    rgb_to_oklab(rgb).to_polar()
-}
-
-pub trait OklchToRgb<S, E>
-where
-    S: ColorSpace,
-    E: GammaEncoding,
-{
-    fn oklch_to_rgb(oklch: &Oklch) -> Rgb<S, E>;
-}
-
-impl<S> OklchToRgb<S, LinearLight> for Rgb<S, LinearLight>
-where
-    S: ColorSpace,
-    Rgb<S, LinearLight>: ToXyz,
-    D65: TransferWhitePoint<WhitePointFor<S>>,
-    Rgb<S, LinearLight>: From<Xyz<WhitePointFor<S>>>,
-{
-    fn oklch_to_rgb(oklch: &Oklch) -> Rgb<S, LinearLight> {
-        let xyz_d65: Xyz<D65> = oklch.to_rectangular().to_xyz();
-        let xyz: Xyz<WhitePointFor<S>> = xyz_d65.transfer::<WhitePointFor<S>>();
-        Rgb::<S, LinearLight>::from(xyz)
+    fn from(value: Oklab) -> Self {
+        Self::from(value.to_base())
     }
 }
 
-impl<S> OklchToRgb<S, GammaEncoded> for Rgb<S, GammaEncoded>
+impl<S: ColorSpace> From<Oklab> for Rgb<S, GammaEncoded>
 where
-    S: ColorSpace + HasGammaEncoding,
-    Rgb<S, LinearLight>: ToXyz,
-    D65: TransferWhitePoint<WhitePointFor<S>>,
-    Rgb<S, LinearLight>: From<Xyz<WhitePointFor<S>>>,
+    S: HasGammaEncoding,
+    Rgb<S, LinearLight>: From<Base>,
 {
-    fn oklch_to_rgb(oklch: &Oklch) -> Rgb<S, GammaEncoded> {
-        let xyz_d65: Xyz<D65> = oklch.to_rectangular().to_xyz();
-        let xyz: Xyz<WhitePointFor<S>> = xyz_d65.transfer::<WhitePointFor<S>>();
-        Rgb::<S, LinearLight>::from(xyz).to_gamma_encoded()
+    fn from(value: Oklab) -> Self {
+        Rgb::<S, LinearLight>::from(value.to_base()).to_gamma_encoded()
     }
 }
 
 /// Calculate deltaE OK (simple root sum of squares).
 /// <https://drafts.csswg.org/css-color-4/#color-difference-OK>
-fn delta_eok<S, E>(reference: &Polar<color_space::Oklab>, sample: &Rgb<S, E>) -> Component
+fn delta_eok<S: ColorSpace, E: GammaEncoding>(
+    reference: &Polar<color_space::Oklab>,
+    sample: &Rgb<S, E>,
+) -> Component
 where
-    S: ColorSpace + HasGammaEncoding,
-    E: GammaEncoding,
-    Rgb<S, E>: AlwaysLinearLight<S>,
+    Rgb<S, E>: Clone,
+    S: HasGammaEncoding,
     Rgb<S, LinearLight>: ToXyz,
-    <Rgb<S, LinearLight> as ToXyz>::WhitePoint: TransferWhitePoint<D65>,
+    WhitePointFor<S>: TransferWhitePoint<D65>,
+    Oklab: From<Rgb<S, E>>,
 {
     // Delta is calculated in the oklab color space.
     let reference = reference.to_rectangular();
-    let sample = rgb_to_oklab(sample);
+    let sample = Oklab::from(sample.clone());
 
     let dl = sample.lightness - reference.lightness;
     let da = sample.a - reference.a;
